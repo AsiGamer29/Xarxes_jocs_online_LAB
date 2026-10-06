@@ -4,23 +4,34 @@ using UnityEngine;
 
 public static class ServerSession
 {
-
-    public const string SceneMenu   = "MainMenu";
+    public const string SceneMenu = "MainMenu";
     public const string SceneCreate = "CreateGame";
-    public const string SceneJoin   = "JoinGame";
-    public const string SceneLobby  = "Lobby";
-
+    public const string SceneJoin = "JoinGame";
+    public const string SceneLobby = "Lobby";
 
     public static string PlayerName = "Player";
-    public static string ServerIp   = "127.0.0.1";
-    public static int    Port       = 9050;
-    public static bool   IsHost;
+    public static string ServerIp = "127.0.0.1";
+    public static int Port = 9050;
+    public static bool IsHost;
 
-
+    public static LobbyServer Server;
+    public static LobbyClient Client;
 
     public static void Reset()
     {
+        if (Server != null)
+        {
+            Server.Disconnect();
+            Object.Destroy(Server.gameObject);
+            Server = null;
+        }
 
+        if (Client != null)
+        {
+            Client.Disconnect();
+            Object.Destroy(Client.gameObject);
+            Client = null;
+        }
 
         IsHost = false;
     }

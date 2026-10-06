@@ -11,14 +11,14 @@ public class JoinServerUI : MonoBehaviour
     [SerializeField] TMP_InputField ipField;
     [SerializeField] TMP_InputField portField;
 
-    [Header("Butons and status")]
+    [Header("Buttons and status")]
     [SerializeField] Button joinButton;
     [SerializeField] Button cancelButton;
     [SerializeField] Button backButton;
     [SerializeField] TMP_Text statusText;
 
-    bool m_busy;       
-    bool m_done;       
+    bool m_busy;      
+    bool m_done;      
 
     void Start()
     {
@@ -63,14 +63,22 @@ public class JoinServerUI : MonoBehaviour
         ServerSession.Port = port;
         ServerSession.IsHost = false;
 
-        // El cliente vive en un GameObject que NO se destruye al cambiar de escena
         GameObject go = new GameObject("LobbyClient");
         DontDestroyOnLoad(go);
+        LobbyClient client = go.AddComponent<LobbyClient>();
+        client.serverIp = ip;
+        client.port = port;
+        client.userName = ServerSession.PlayerName;
+        ServerSession.Client = client;
+
+        client.StartNetwork();
+        SetBusy(true);
+        ShowStatus("Conectando...", false);
     }
 
     public void OnCancelClicked()
     {
-        ServerSession.Reset();                       
+        ServerSession.Reset();           
         SetBusy(false);
         ShowStatus("", false);
     }
@@ -83,7 +91,21 @@ public class JoinServerUI : MonoBehaviour
 
     void Update()
     {
+        if (!m_busy || m_done || ServerSession.Client == null) return;
 
+        LobbyClient.State st = ServerSession.Client.Status;
+
+        if (st == LobbyClient.State.Connected)
+        {
+            m_done = true;
+            SceneManager.LoadScene(ServerSession.SceneLobby);
+        }
+        else if (st == LobbyClient.State.Failed)
+        {
+            ShowStatus(ServerSession.Client.LastError, true);
+            ServerSession.Reset();
+            SetBusy(false);
+        }
     }
 
     void SetBusy(bool busy)
