@@ -1,18 +1,3 @@
-// =================================================================================================
-//  LobbyServer (TCP) - el HOST
-//  Basado en SocketsTCPServer del Lab 2.1: mismos hilos, mismo framing [4 bytes longitud][payload]
-//  y mismo patrón "el hilo de red mete en una cola, Update() la vacía".
-//
-//  Protocolo de texto TIPO:contenido
-//      cliente -> servidor :  JOIN:nombre     LEAVE:
-//      servidor -> clientes:  PLAYERS:a,b,c   LOG:texto del evento
-//
-//  El servidor es el dueño de la lista de jugadores y la reenvía ENTERA en cada join/leave.
-//  El host también es un jugador: aparece el primero de la lista.
-//
-//  Regla de oro: m_members, Players y Events SOLO se tocan desde el hilo principal.
-// =================================================================================================
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -29,33 +14,27 @@ public class LobbyServer : MonoBehaviour
     public int port = 9050;
     public string hostName = "Host";
 
-    // ---- Lo que lee la interfaz (siempre desde el hilo principal) ----
-    public readonly List<string> Players = new List<string>();   // el host siempre es el primero
-    public readonly List<string> Events = new List<string>();    // "Servidor creado", "Anna se ha unido"...
-    public int PlayersVersion;                    // sube cada vez que cambia la lista de jugadores
-    public int EventsVersion;                     // sube con cada evento nuevo
+    public readonly List<string> Players = new List<string>();
+    public readonly List<string> Events = new List<string>();
+    public int PlayersVersion;
+    public int EventsVersion;
     public string LastError = "";
     public State Status { get { return m_state; } }
 
     const int MaxPacketSize = 64 * 1024;
-
-    // data == null significa "este cliente se ha desconectado" (viaja por la misma cola, slide 10)
     struct Packet { public byte[] data; public Socket from; }
-
-    // Un jugador = un nombre + su socket. El host tiene socket == null (no necesita conexión).
     class Member { public Socket socket; public string name; }
 
     Socket m_listener;
-    readonly List<Socket> m_clients = new List<Socket>();      // para poder cerrarlos al parar
+    readonly List<Socket> m_clients = new List<Socket>();
     readonly List<Thread> m_threads = new List<Thread>();
     readonly ConcurrentQueue<Packet> m_inbox = new ConcurrentQueue<Packet>();
-    readonly List<Member> m_members = new List<Member>();      // SOLO hilo principal
+    readonly List<Member> m_members = new List<Member>();
     volatile bool m_running;
     volatile State m_state = State.Idle;
 
     public int ClientCount { get { return Math.Max(0, Players.Count - 1); } }
 
-    // ---------------------------------------------------------------------------- arranque / parada
 
     public void StartNetwork()
     {
@@ -66,7 +45,7 @@ public class LobbyServer : MonoBehaviour
         m_members.Clear();
         m_members.Add(new Member { socket = null, name = ServerSession.SanitizeName(hostName) });
         RefreshPlayers();
-        AddEvent("* Servidor creado en " + ServerSession.GetLocalIP() + ":" + port);
+        AddEvent("[SERVER] Server created in " + ServerSession.GetLocalIP() + ":" + port);
 
         StartThread(ServerThread);
     }
@@ -92,7 +71,6 @@ public class LobbyServer : MonoBehaviour
 
     void OnDestroy() { Disconnect(); }
 
-    // ---------------------------------------------------------------------------- hilo principal
 
     void Update()
     {
@@ -104,7 +82,6 @@ public class LobbyServer : MonoBehaviour
         }
     }
 
-    // ---------------------------------------------------------------------------- hilos de red
 
     void ServerThread()
     {
@@ -112,15 +89,15 @@ public class LobbyServer : MonoBehaviour
         try
         {
             listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            listener.Bind(new IPEndPoint(IPAddress.Any, port));   // Any: que otros PCs puedan entrar
+            listener.Bind(new IPEndPoint(IPAddress.Any, port));
             listener.Listen(10);
         }
         catch (SocketException e)
         {
             if (listener != null) { try { listener.Close(); } catch { } }
             LastError = e.SocketErrorCode == SocketError.AddressAlreadyInUse
-                ? "El puerto " + port + " ya está en uso (¿otra instancia abierta?)"
-                : "No se pudo crear el servidor: " + e.SocketErrorCode;
+                ? "Port " + port + " is already being used."
+                : "Unable to create server: " + e.SocketErrorCode;
             m_running = false;
             m_state = State.Failed;
             return;
@@ -145,12 +122,12 @@ public class LobbyServer : MonoBehaviour
         }
     }
 
-    // Un hilo por cliente (opción 1 de la slide 3)
+
     void ClientThread(Socket client)
     {
-        ReceiveLoop(client);                                       // vuelve cuando se cae o se va
+        ReceiveLoop(client);
         lock (m_clients) m_clients.Remove(client);
-        m_inbox.Enqueue(new Packet { data = null, from = client });   // avisar al hilo principal
+        m_inbox.Enqueue(new Packet { data = null, from = client });
         CloseSocket(client);
     }
 
@@ -171,7 +148,7 @@ public class LobbyServer : MonoBehaviour
         }
     }
 
-    // TCP es un flujo de bytes: un Receive puede devolver menos de lo pedido, así que insistimos.
+
     bool ReadExactly(Socket socket, byte[] buffer, int count)
     {
         int total = 0;
@@ -182,13 +159,12 @@ public class LobbyServer : MonoBehaviour
             catch (SocketException) { return false; }
             catch (ObjectDisposedException) { return false; }
 
-            if (read == 0) return false;      // 0 = el otro lado cerró la conexión
+            if (read == 0) return false;
             total += read;
         }
         return true;
     }
 
-    // ---------------------------------------------------------------------------- protocolo
 
     void HandleMessage(byte[] data, Socket from)
     {
@@ -202,9 +178,13 @@ public class LobbyServer : MonoBehaviour
         switch (type)
         {
             case "JOIN":
-                // Solo se añade UNA vez por conexión (error típico de la slide 15: duplicados)
                 if (member != null) return;
                 AddMember(from, content);
+                break;
+
+            case "CHAT":
+                if (member == null) return;
+                HandleChat(member.name, content);
                 break;
 
             case "LEAVE":
@@ -219,25 +199,43 @@ public class LobbyServer : MonoBehaviour
         string name = UniqueName(ServerSession.SanitizeName(rawName));
         m_members.Add(new Member { socket = socket, name = name });
 
-        BroadcastPlayers();                                        // el nuevo recibe la lista al instante
-        Announce("* " + name + " se ha unido");
+        BroadcastPlayers();
+        Announce("[PLAYER] " + name + " joined the lobby");
     }
 
     void RemoveMember(Socket socket)
     {
         Member m = FindMember(socket);
-        if (m == null) return;                                     // ya estaba quitado (p. ej. tras LEAVE)
+        if (m == null) return;
 
         m_members.Remove(m);
         BroadcastPlayers();
-        Announce("* " + m.name + " se ha desconectado");
+        Announce("[PLAYER]" + m.name + " left the lobby");
     }
-
-    // Evento para el log: lo guardo yo y lo envío a TODOS los clientes.
     void Announce(string line)
     {
         AddEvent(line);
         Broadcast("LOG:" + line);
+    }
+    public void SendHostChat(string text)
+    {
+        if (m_state != State.Running || m_members.Count == 0) return;
+        HandleChat(m_members[0].name, text);
+    }
+
+    void HandleChat(string senderName, string raw)
+    {
+        string text = CleanChat(raw);
+        if (text.Length == 0) return;
+        Announce(senderName + ": " + text);
+    }
+
+    static string CleanChat(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "";
+        string t = raw.Replace("\r", " ").Replace("\n", " ").Trim();
+        if (t.Length > 200) t = t.Substring(0, 200);
+        return t;
     }
 
     void BroadcastPlayers()
@@ -246,8 +244,6 @@ public class LobbyServer : MonoBehaviour
         Broadcast("PLAYERS:" + string.Join(",", Players.ToArray()));
     }
 
-    // Slide 6: recorrer todos los sockets y enviar a cada uno.
-    // (m_members solo se toca desde el hilo principal, así que aquí no hace falta lock.)
     void Broadcast(string text)
     {
         byte[] payload = Encoding.UTF8.GetBytes(text);
@@ -265,8 +261,6 @@ public class LobbyServer : MonoBehaviour
         catch (SocketException e) { Debug.Log("[SERVER] Send failed: " + e.SocketErrorCode); }
         catch (ObjectDisposedException) { }
     }
-
-    // ---------------------------------------------------------------------------- utilidades
 
     Member FindMember(Socket s)
     {

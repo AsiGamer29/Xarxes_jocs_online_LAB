@@ -38,7 +38,12 @@ public class LobbyClient : MonoBehaviour
         m_state = State.Connecting;
         StartThread(ClientThread);
     }
-
+    public void SendChat(string text)
+    {
+        if (m_state != State.Connected) return;
+        if (string.IsNullOrWhiteSpace(text)) return;
+        SendString("CHAT:" + text);
+    }
     public void Leave()
     {
         SendString("LEAVE:");
@@ -68,7 +73,7 @@ public class LobbyClient : MonoBehaviour
         if (!m_announcedConnected && m_state == State.Connected)
         {
             m_announcedConnected = true;
-            AddEvent("* Conectado al servidor " + serverIp + ":" + port);
+            AddEvent("[CLIENT] Connected with server " + serverIp + ":" + port);
         }
 
         byte[] data;
@@ -83,7 +88,7 @@ public class LobbyClient : MonoBehaviour
     {
         if (m_state == State.Closed) return;
         m_state = State.Closed;
-        AddEvent("* Se ha perdido la conexión con el servidor");
+        AddEvent("[CLIENT] Connection with the server was lost.");
     }
 
     void OnPacketReceived(byte[] data)
@@ -120,11 +125,11 @@ public class LobbyClient : MonoBehaviour
         catch (SocketException e)
         {
             Fail(e.SocketErrorCode == SocketError.ConnectionRefused
-                ? "Nadie escucha en " + serverIp + ":" + port + " (¿el host ya creó la partida?)"
-                : "No se pudo conectar: " + e.SocketErrorCode);
+                ? "Nobody listening in " + serverIp + ":" + port
+                : "Unable to connect: " + e.SocketErrorCode);
             return;
         }
-        catch (FormatException) { Fail("La IP no es válida"); return; }
+        catch (FormatException) { Fail("IP not valid"); return; }
         catch (ObjectDisposedException) { return; }               
 
         m_state = State.Connected;

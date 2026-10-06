@@ -6,12 +6,10 @@ using UnityEngine.UI;
 
 public class JoinServerUI : MonoBehaviour
 {
-    [Header("Fields")]
     [SerializeField] TMP_InputField nameField;
     [SerializeField] TMP_InputField ipField;
     [SerializeField] TMP_InputField portField;
 
-    [Header("Buttons and status")]
     [SerializeField] Button joinButton;
     [SerializeField] Button cancelButton;
     [SerializeField] Button backButton;
@@ -25,14 +23,14 @@ public class JoinServerUI : MonoBehaviour
         Application.runInBackground = true;
         ServerSession.Reset();
 
-        nameField.characterLimit = 16;
+        nameField.characterLimit = 12; //Name size in characters
         nameField.text = ServerSession.PlayerName;
 
-        ipField.characterLimit = 15;               // 255.255.255.255
+        ipField.characterLimit = 15; //IP size in characters
         ipField.text = ServerSession.ServerIp;
 
         portField.contentType = TMP_InputField.ContentType.IntegerNumber;
-        portField.characterLimit = 5;
+        portField.characterLimit = 5; //Port size in characters
         portField.text = ServerSession.Port.ToString();
 
         SetBusy(false);
@@ -46,7 +44,7 @@ public class JoinServerUI : MonoBehaviour
         int port;
         if (!int.TryParse(portField.text, out port) || port < 1 || port > 65535)
         {
-            ShowStatus("Puerto no válido (1-65535)", true);
+            ShowStatus("", true);
             return;
         }
 
@@ -54,7 +52,7 @@ public class JoinServerUI : MonoBehaviour
         IPAddress parsed;
         if (!IPAddress.TryParse(ip, out parsed))
         {
-            ShowStatus("La IP no es válida (ejemplo: 192.168.1.20)", true);
+            ShowStatus("IP not valid, please try another one", true);
             return;
         }
 
@@ -73,7 +71,7 @@ public class JoinServerUI : MonoBehaviour
 
         client.StartNetwork();
         SetBusy(true);
-        ShowStatus("Conectando...", false);
+        ShowStatus("Connecting, please wait...", false);
     }
 
     public void OnCancelClicked()
@@ -121,6 +119,5 @@ public class JoinServerUI : MonoBehaviour
     void ShowStatus(string message, bool isError)
     {
         statusText.text = message;
-        statusText.color = isError ? new Color(1f, 0.4f, 0.4f) : Color.white;
     }
 }

@@ -1,16 +1,3 @@
-// =================================================================================================
-//  LobbyUI - escena S_Lobby (sala de espera SIN chat)
-//  Es la MISMA escena para el host y para los clientes. Muestra:
-//    - una cabecera (IP y puerto si eres host / a qué servidor estás conectado si eres cliente)
-//    - la lista de jugadores conectados
-//    - un log de eventos: "Servidor creado...", "Anna se ha unido", "Marc se ha desconectado"
-//
-//  No sabe nada de sockets: lee Players / Events del LobbyServer o del LobbyClient, que
-//  sobrevivieron al cambio de escena (DontDestroyOnLoad). Solo repinta cuando algo cambia.
-//
-//  Va en un GameObject vacío ("LobbyController"). Las referencias se arrastran en el Inspector.
-// =================================================================================================
-
 using System.Collections.Generic;
 using System.Text;
 using TMPro;
@@ -20,23 +7,22 @@ using UnityEngine.UI;
 
 public class LobbyUI : MonoBehaviour
 {
-    [Header("Textos")]
     [SerializeField] TMP_Text headerText;          
     [SerializeField] TMP_Text playersText;         
     [SerializeField] TMP_Text logText;            
     [SerializeField] TMP_Text statusText;         
-
-    [Header("Log con scroll")]
     [SerializeField] ScrollRect logScroll;
-
-    [Header("Botón salir")]
-    [SerializeField] TMP_Text leaveButtonText;    
+    [SerializeField] TMP_Text leaveButtonText;
+    [SerializeField] TMP_InputField chatInput;
+    [SerializeField] Button sendButton;
 
     bool m_isHost;
     bool m_noSession;
     bool m_showedDisconnected;
+    bool m_leaving;
     int m_playersVersion = -1;
     int m_eventsVersion = -1;
+
 
 
     bool HasSession { get { return m_isHost ? ServerSession.Server != null : ServerSession.Client != null; } }
@@ -67,22 +53,27 @@ public class LobbyUI : MonoBehaviour
 
         if (m_isHost)
         {
-            headerText.text = "SALA  (eres el HOST)\nIP: " + ServerSession.GetLocalIP() +
-                              "     Puerto: " + ServerSession.Port + "     → pásales esta IP a los demás";
-            leaveButtonText.text = "Cerrar sala";
+            headerText.text = "LOBBY\nHosting in IP: " + ServerSession.GetLocalIP() +
+                              ": " + ServerSession.Port;
+            leaveButtonText.text = "Stop hosting";
         }
         else
         {
-            headerText.text = "SALA\nConectado a " + ServerSession.ServerIp + ":" + ServerSession.Port;
-            leaveButtonText.text = "Salir de la sala";
+            headerText.text = "LOBBY\nConnected to " + ServerSession.ServerIp + ":" + ServerSession.Port;
         }
+
+        logText.richText = false;
+        chatInput.characterLimit = 200;
+        chatInput.lineType = TMP_InputField.LineType.SingleLine;
+        chatInput.onSubmit.AddListener(delegate { OnSendClicked(); });
+        sendButton.onClick.AddListener(OnSendClicked);
 
         statusText.text = "";
     }
 
     void Update()
     {
-        if (m_noSession) return;
+        if (m_noSession || m_leaving || !HasSession) return;
 
         if (PlayersVersion != m_playersVersion) RefreshPlayers();
         if (EventsVersion != m_eventsVersion) RefreshEvents();
@@ -90,8 +81,9 @@ public class LobbyUI : MonoBehaviour
         if (!Connected && !m_showedDisconnected)
         {
             m_showedDisconnected = true;
-            statusText.color = new Color(1f, 0.4f, 0.4f);
-            statusText.text = "Desconectado del servidor. Pulsa Salir para volver al menú.";
+            chatInput.interactable = false;
+            sendButton.interactable = false;
+            statusText.text = "Disconnected.";
         }
     }
 
@@ -101,7 +93,7 @@ public class LobbyUI : MonoBehaviour
 
         List<string> players = Players;
         StringBuilder sb = new StringBuilder();
-        sb.Append("Jugadores (").Append(players.Count).Append(")\n\n");
+        sb.Append("Players (").Append(players.Count).Append(")\n\n");
         for (int i = 0; i < players.Count; i++)
         {
             sb.Append("• ").Append(players[i]);
@@ -119,7 +111,6 @@ public class LobbyUI : MonoBehaviour
         foreach (string line in Events) sb.Append(line).Append('\n');
         logText.text = sb.ToString();
 
-        // Bajar al final para ver siempre el último evento
         if (logScroll != null)
         {
             Canvas.ForceUpdateCanvases();
@@ -127,12 +118,23 @@ public class LobbyUI : MonoBehaviour
         }
     }
 
-    // ---------------------------------------------------------------------------- botón (OnClick)
-
     public void OnLeaveClicked()
     {
-        if (!m_isHost && ServerSession.Client != null) ServerSession.Client.Leave();   // manda LEAVE:
-        ServerSession.Reset();                                                       // cierra sockets
+        m_leaving = true;
+        if (!m_isHost && ServerSession.Client != null) ServerSession.Client.Leave();
+        ServerSession.Reset();
         SceneManager.LoadScene(ServerSession.SceneMenu);
+    }
+
+    public void OnSendClicked()
+    {
+        string text = chatInput.text.Trim();
+        if (text.Length == 0) return;
+
+        if (m_isHost) ServerSession.Server.SendHostChat(text);
+        else ServerSession.Client.SendChat(text);
+
+        chatInput.text = "";
+        chatInput.ActivateInputField();
     }
 }
