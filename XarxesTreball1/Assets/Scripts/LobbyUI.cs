@@ -17,6 +17,7 @@ public class LobbyUI : MonoBehaviour
     [SerializeField] Button sendButton;
 
     bool m_isHost;
+    bool m_udp;
     bool m_noSession;
     bool m_showedDisconnected;
     bool m_leaving;
@@ -25,15 +26,53 @@ public class LobbyUI : MonoBehaviour
 
 
 
-    bool HasSession { get { return m_isHost ? ServerSession.Server != null : ServerSession.Client != null; } }
-    List<string> Players { get { return m_isHost ? ServerSession.Server.Players : ServerSession.Client.Players; } }
-    List<string> Events { get { return m_isHost ? ServerSession.Server.Events : ServerSession.Client.Events; } }
-    int PlayersVersion { get { return m_isHost ? ServerSession.Server.PlayersVersion : ServerSession.Client.PlayersVersion; } }
-    int EventsVersion { get { return m_isHost ? ServerSession.Server.EventsVersion : ServerSession.Client.EventsVersion; } }
+    bool HasSession
+    {
+        get
+        {
+            if (m_udp) return m_isHost ? ServerSession.UdpServer != null : ServerSession.UdpClient != null;
+            return m_isHost ? ServerSession.Server != null : ServerSession.Client != null;
+        }
+    }
+    List<string> Players
+    {
+        get
+        {
+            if (m_udp) return m_isHost ? ServerSession.UdpServer.Players : ServerSession.UdpClient.Players;
+            return m_isHost ? ServerSession.Server.Players : ServerSession.Client.Players;
+        }
+    }
+    List<string> Events
+    {
+        get
+        {
+            if (m_udp) return m_isHost ? ServerSession.UdpServer.Events : ServerSession.UdpClient.Events;
+            return m_isHost ? ServerSession.Server.Events : ServerSession.Client.Events;
+        }
+    }
+    int PlayersVersion
+    {
+        get
+        {
+            if (m_udp) return m_isHost ? ServerSession.UdpServer.PlayersVersion : ServerSession.UdpClient.PlayersVersion;
+            return m_isHost ? ServerSession.Server.PlayersVersion : ServerSession.Client.PlayersVersion;
+        }
+    }
+    int EventsVersion
+    {
+        get
+        {
+            if (m_udp) return m_isHost ? ServerSession.UdpServer.EventsVersion : ServerSession.UdpClient.EventsVersion;
+            return m_isHost ? ServerSession.Server.EventsVersion : ServerSession.Client.EventsVersion;
+        }
+    }
     bool Connected
     {
         get
         {
+            if (m_udp)
+                return m_isHost ? ServerSession.UdpServer.Status == UdpLobbyServer.State.Running
+                                : ServerSession.UdpClient.Status == UdpLobbyClient.State.Connected;
             return m_isHost ? ServerSession.Server.Status == LobbyServer.State.Running
                             : ServerSession.Client.Status == LobbyClient.State.Connected;
         }
@@ -43,6 +82,7 @@ public class LobbyUI : MonoBehaviour
     {
         Application.runInBackground = true;
         m_isHost = ServerSession.IsHost;
+        m_udp = ServerSession.SelectedProtocol == ServerSession.Protocol.UDP;
 
         if (!HasSession)
         {
@@ -61,6 +101,9 @@ public class LobbyUI : MonoBehaviour
         {
             headerText.text = "LOBBY\nConnected to " + ServerSession.ServerIp + ":" + ServerSession.Port;
         }
+
+        if (m_udp) headerText.text += "  [UDP]";
+        else headerText.text += "  [TCP]";
 
         logText.richText = false;
         chatInput.characterLimit = 200;
@@ -122,6 +165,7 @@ public class LobbyUI : MonoBehaviour
     {
         m_leaving = true;
         if (!m_isHost && ServerSession.Client != null) ServerSession.Client.Leave();
+        if (!m_isHost && ServerSession.UdpClient != null) ServerSession.UdpClient.Leave();
         ServerSession.Reset();
         SceneManager.LoadScene(ServerSession.SceneMenu);
     }
@@ -131,7 +175,12 @@ public class LobbyUI : MonoBehaviour
         string text = chatInput.text.Trim();
         if (text.Length == 0) return;
 
-        if (m_isHost) ServerSession.Server.SendHostChat(text);
+        if (m_udp)
+        {
+            if (m_isHost) ServerSession.UdpServer.SendHostChat(text);
+            else ServerSession.UdpClient.SendChat(text);
+        }
+        else if (m_isHost) ServerSession.Server.SendHostChat(text);
         else ServerSession.Client.SendChat(text);
 
         chatInput.text = "";

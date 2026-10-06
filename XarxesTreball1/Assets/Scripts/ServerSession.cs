@@ -17,6 +17,11 @@ public static class ServerSession
     public static LobbyServer Server;
     public static LobbyClient Client;
 
+    public enum Protocol { TCP, UDP }
+    public static Protocol SelectedProtocol = Protocol.TCP;
+    public static UdpLobbyServer UdpServer;
+    public static UdpLobbyClient UdpClient;
+
     public static void Reset()
     {
         if (Server != null)
@@ -31,6 +36,20 @@ public static class ServerSession
             Client.Disconnect();
             Object.Destroy(Client.gameObject);
             Client = null;
+        }
+
+        if (UdpServer != null)
+        {
+            UdpServer.Disconnect();
+            Object.Destroy(UdpServer.gameObject);
+            UdpServer = null;
+        }
+
+        if (UdpClient != null)
+        {
+            UdpClient.Disconnect();
+            Object.Destroy(UdpClient.gameObject);
+            UdpClient = null;
         }
 
         IsHost = false;

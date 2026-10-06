@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Net;
 using TMPro;
 using UnityEngine;
@@ -9,6 +10,7 @@ public class JoinServerUI : MonoBehaviour
     [SerializeField] TMP_InputField nameField;
     [SerializeField] TMP_InputField ipField;
     [SerializeField] TMP_InputField portField;
+    [SerializeField] TMP_Dropdown protocolDropdown;
 
     [SerializeField] Button joinButton;
     [SerializeField] Button cancelButton;
@@ -32,6 +34,13 @@ public class JoinServerUI : MonoBehaviour
         portField.contentType = TMP_InputField.ContentType.IntegerNumber;
         portField.characterLimit = 5; //Port size in characters
         portField.text = ServerSession.Port.ToString();
+
+        if (protocolDropdown != null)
+        {
+            protocolDropdown.ClearOptions();
+            protocolDropdown.AddOptions(new List<string> { "TCP", "UDP" });
+            protocolDropdown.value = (int)ServerSession.SelectedProtocol;
+        }
 
         SetBusy(false);
         ShowStatus("", false);
@@ -61,6 +70,30 @@ public class JoinServerUI : MonoBehaviour
         ServerSession.Port = port;
         ServerSession.IsHost = false;
 
+        if (protocolDropdown != null)
+        {
+            ServerSession.SelectedProtocol = (ServerSession.Protocol)protocolDropdown.value;
+        }
+        else
+        {
+            ServerSession.SelectedProtocol = ServerSession.Protocol.TCP; //default
+        }
+        if (ServerSession.SelectedProtocol == ServerSession.Protocol.UDP)
+        {
+            GameObject udpGo = new GameObject("UdpLobbyClient");
+            DontDestroyOnLoad(udpGo);
+            UdpLobbyClient udpClient = udpGo.AddComponent<UdpLobbyClient>();
+            udpClient.serverIp = ip;
+            udpClient.port = port;
+            udpClient.userName = ServerSession.PlayerName;
+            ServerSession.UdpClient = udpClient;
+
+            udpClient.StartNetwork();
+            SetBusy(true);
+            ShowStatus("Connecting, please wait...", false);
+            return;
+        }
+
         GameObject go = new GameObject("LobbyClient");
         DontDestroyOnLoad(go);
         LobbyClient client = go.AddComponent<LobbyClient>();
@@ -89,6 +122,12 @@ public class JoinServerUI : MonoBehaviour
 
     void Update()
     {
+        if (m_busy && !m_done && ServerSession.UdpClient != null)
+        {
+            UpdateUdp();
+            return;
+        }
+
         if (!m_busy || m_done || ServerSession.Client == null) return;
 
         LobbyClient.State st = ServerSession.Client.Status;
@@ -106,6 +145,23 @@ public class JoinServerUI : MonoBehaviour
         }
     }
 
+    void UpdateUdp()
+    {
+        UdpLobbyClient.State st = ServerSession.UdpClient.Status;
+
+        if (st == UdpLobbyClient.State.Connected)
+        {
+            m_done = true;
+            SceneManager.LoadScene(ServerSession.SceneLobby);
+        }
+        else if (st == UdpLobbyClient.State.Failed)
+        {
+            ShowStatus(ServerSession.UdpClient.LastError, true);
+            ServerSession.Reset();
+            SetBusy(false);
+        }
+    }
+
     void SetBusy(bool busy)
     {
         m_busy = busy;
@@ -113,6 +169,7 @@ public class JoinServerUI : MonoBehaviour
         nameField.interactable = !busy;
         ipField.interactable = !busy;
         portField.interactable = !busy;
+        if (protocolDropdown != null) protocolDropdown.interactable = !busy;
         cancelButton.gameObject.SetActive(busy);   
     }
 

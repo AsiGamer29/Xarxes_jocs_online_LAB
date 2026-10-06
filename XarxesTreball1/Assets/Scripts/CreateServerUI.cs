@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -9,6 +10,9 @@ public class CreateGameUI : MonoBehaviour
     [SerializeField] TMP_InputField ipField;
     [SerializeField] TMP_InputField nameField;
     [SerializeField] TMP_InputField portField;
+
+    [Header("Protocolo")]
+    [SerializeField] TMP_Dropdown protocolDropdown;
 
     [Header("Botones y mensajes")]
     [SerializeField] Button createButton;
@@ -33,6 +37,13 @@ public class CreateGameUI : MonoBehaviour
         ipField.readOnly = true;
         ipField.text = ServerSession.GetLocalIP();
 
+        if (protocolDropdown != null)
+        {
+            protocolDropdown.ClearOptions();
+            protocolDropdown.AddOptions(new List<string> { "TCP", "UDP" });
+            protocolDropdown.value = (int)ServerSession.SelectedProtocol;
+        }
+
         ShowStatus("", false);
     }
 
@@ -50,6 +61,29 @@ public class CreateGameUI : MonoBehaviour
         ServerSession.PlayerName = ServerSession.SanitizeName(nameField.text);
         ServerSession.Port = port;
         ServerSession.IsHost = true;
+
+        if (protocolDropdown != null)
+        {
+            ServerSession.SelectedProtocol = (ServerSession.Protocol)protocolDropdown.value;
+        }
+        else
+        {
+            ServerSession.SelectedProtocol = ServerSession.Protocol.TCP; //default
+        }
+        if (ServerSession.SelectedProtocol == ServerSession.Protocol.UDP)
+        {
+            GameObject udpGo = new GameObject("UdpLobbyServer");
+            DontDestroyOnLoad(udpGo);
+            UdpLobbyServer udpServer = udpGo.AddComponent<UdpLobbyServer>();
+            udpServer.port = port;
+            udpServer.hostName = ServerSession.PlayerName;
+            ServerSession.UdpServer = udpServer;
+
+            udpServer.StartNetwork();
+            SetBusy(true);
+            ShowStatus("Creating server, please wait...", false);
+            return;
+        }
 
         GameObject go = new GameObject("LobbyServer");
         DontDestroyOnLoad(go);
@@ -71,6 +105,12 @@ public class CreateGameUI : MonoBehaviour
 
     void Update()
     {
+        if (m_busy && !m_done && ServerSession.UdpServer != null)
+        {
+            UpdateUdp();
+            return;
+        }
+
         if (!m_busy || m_done || ServerSession.Server == null) return;
         
         LobbyServer.State st = ServerSession.Server.Status;
@@ -88,6 +128,23 @@ public class CreateGameUI : MonoBehaviour
         }
     }
 
+    void UpdateUdp()
+    {
+        UdpLobbyServer.State st = ServerSession.UdpServer.Status;
+
+        if (st == UdpLobbyServer.State.Running)
+        {
+            m_done = true;
+            SceneManager.LoadScene(ServerSession.SceneLobby);
+        }
+        else if (st == UdpLobbyServer.State.Failed)
+        {
+            ShowStatus(ServerSession.UdpServer.LastError, true);
+            ServerSession.Reset();
+            SetBusy(false);
+        }
+    }
+
     void SetBusy(bool busy)
     {
         m_busy = busy;
@@ -95,6 +152,7 @@ public class CreateGameUI : MonoBehaviour
         backButton.interactable = !busy;
         nameField.interactable = !busy;
         portField.interactable = !busy;
+        if (protocolDropdown != null) protocolDropdown.interactable = !busy;
     }
 
     void ShowStatus(string message, bool isError)
