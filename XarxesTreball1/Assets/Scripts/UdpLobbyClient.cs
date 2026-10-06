@@ -124,17 +124,17 @@ public class UdpLobbyClient : MonoBehaviour
         string type = i < 0 ? text : text.Substring(0, i);
         string content = i < 0 ? "" : text.Substring(i + 1);
 
+        // The lab protocol has no WELCOME: a server answers a JOIN with the player list,
+        // so PLAYERS confirms the join as well.
+        if (m_state == State.Connecting && (type == "WELCOME" || type == "PLAYERS"))
+        {
+            m_lastReceived = now;
+            m_lastPing = now;
+            m_state = State.Connected;
+        }
+
         switch (type)
         {
-            case "WELCOME":
-                if (m_state == State.Connecting)
-                {
-                    m_lastReceived = now;
-                    m_lastPing = now;
-                    m_state = State.Connected;
-                }
-                break;
-
             case "PLAYERS":
                 List<string> list = new List<string>();
                 foreach (string n in content.Split(','))
@@ -148,6 +148,7 @@ public class UdpLobbyClient : MonoBehaviour
                 }
                 break;
 
+            case "CHAT":
             case "LOG":
                 AddEvent(content);
                 break;

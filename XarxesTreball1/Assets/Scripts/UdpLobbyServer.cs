@@ -226,7 +226,11 @@ public class UdpLobbyServer : MonoBehaviour
     {
         string text = CleanChat(raw);
         if (text.Length == 0) return;
-        Announce(senderName + ": " + text);
+
+        // Lab protocol: chat lines go out as CHAT:<name>: <text>. LOG: is only for room notices.
+        string line = senderName + ": " + text;
+        AddEvent(line);
+        Broadcast("CHAT:" + line);
     }
 
     static string CleanChat(string raw)

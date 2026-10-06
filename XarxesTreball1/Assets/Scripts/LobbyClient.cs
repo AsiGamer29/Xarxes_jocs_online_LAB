@@ -107,6 +107,7 @@ public class LobbyClient : MonoBehaviour
                 PlayersVersion++;
                 break;
 
+            case "CHAT":
             case "LOG":
                 AddEvent(content);
                 break;
