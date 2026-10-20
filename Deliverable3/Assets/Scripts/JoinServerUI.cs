@@ -1,0 +1,180 @@
+using System.Collections.Generic;
+using System.Net;
+using TMPro;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+public class JoinServerUI : MonoBehaviour
+{
+    [SerializeField] TMP_InputField nameField;
+    [SerializeField] TMP_InputField ipField;
+    [SerializeField] TMP_InputField portField;
+    [SerializeField] TMP_Dropdown protocolDropdown;
+
+    [SerializeField] Button joinButton;
+    [SerializeField] Button cancelButton;
+    [SerializeField] Button backButton;
+    [SerializeField] TMP_Text statusText;
+
+    bool m_busy;      
+    bool m_done;      
+
+    void Start()
+    {
+        Application.runInBackground = true;
+        ServerSession.Reset();
+
+        nameField.characterLimit = 12; //Name size in characters
+        nameField.text = ServerSession.PlayerName;
+
+        ipField.characterLimit = 15; //IP size in characters
+        ipField.text = ServerSession.ServerIp;
+
+        portField.contentType = TMP_InputField.ContentType.IntegerNumber;
+        portField.characterLimit = 5; //Port size in characters
+        portField.text = ServerSession.Port.ToString();
+
+        if (protocolDropdown != null)
+        {
+            protocolDropdown.ClearOptions();
+            protocolDropdown.AddOptions(new List<string> { "TCP", "UDP" });
+            protocolDropdown.value = (int)ServerSession.SelectedProtocol;
+        }
+
+        SetBusy(false);
+        ShowStatus("", false);
+    }
+
+    public void OnJoinClicked()
+    {
+        if (m_busy) return;
+
+        int port;
+        if (!int.TryParse(portField.text, out port) || port < 1 || port > 65535)
+        {
+            ShowStatus("", true);
+            return;
+        }
+
+        string ip = ipField.text.Trim();
+        IPAddress parsed;
+        if (!IPAddress.TryParse(ip, out parsed))
+        {
+            ShowStatus("IP not valid, please try another one", true);
+            return;
+        }
+
+        ServerSession.PlayerName = ServerSession.SanitizeName(nameField.text);
+        ServerSession.ServerIp = ip;
+        ServerSession.Port = port;
+        ServerSession.IsHost = false;
+
+        if (protocolDropdown != null)
+        {
+            ServerSession.SelectedProtocol = (ServerSession.Protocol)protocolDropdown.value;
+        }
+        else
+        {
+            ServerSession.SelectedProtocol = ServerSession.Protocol.TCP; //default
+        }
+        if (ServerSession.SelectedProtocol == ServerSession.Protocol.UDP)
+        {
+            GameObject udpGo = new GameObject("UdpLobbyClient");
+            DontDestroyOnLoad(udpGo);
+            UdpLobbyClient udpClient = udpGo.AddComponent<UdpLobbyClient>();
+            udpClient.serverIp = ip;
+            udpClient.port = port;
+            udpClient.userName = ServerSession.PlayerName;
+            ServerSession.UdpClient = udpClient;
+
+            udpClient.StartNetwork();
+            SetBusy(true);
+            ShowStatus("Connecting, please wait...", false);
+            return;
+        }
+
+        GameObject go = new GameObject("LobbyClient");
+        DontDestroyOnLoad(go);
+        LobbyClient client = go.AddComponent<LobbyClient>();
+        client.serverIp = ip;
+        client.port = port;
+        client.userName = ServerSession.PlayerName;
+        ServerSession.Client = client;
+
+        client.StartNetwork();
+        SetBusy(true);
+        ShowStatus("Connecting, please wait...", false);
+    }
+
+    public void OnCancelClicked()
+    {
+        ServerSession.Reset();           
+        SetBusy(false);
+        ShowStatus("", false);
+    }
+
+    public void OnBackClicked()
+    {
+        ServerSession.Reset();
+        SceneManager.LoadScene(ServerSession.SceneMenu);
+    }
+
+    void Update()
+    {
+        if (m_busy && !m_done && ServerSession.UdpClient != null)
+        {
+            UpdateUdp();
+            return;
+        }
+
+        if (!m_busy || m_done || ServerSession.Client == null) return;
+
+        LobbyClient.State st = ServerSession.Client.Status;
+
+        if (st == LobbyClient.State.Connected)
+        {
+            m_done = true;
+            SceneManager.LoadScene(ServerSession.SceneLobby);
+        }
+        else if (st == LobbyClient.State.Failed)
+        {
+            ShowStatus(ServerSession.Client.LastError, true);
+            ServerSession.Reset();
+            SetBusy(false);
+        }
+    }
+
+    void UpdateUdp()
+    {
+        UdpLobbyClient.State st = ServerSession.UdpClient.Status;
+
+        if (st == UdpLobbyClient.State.Connected)
+        {
+            m_done = true;
+            SceneManager.LoadScene(ServerSession.SceneLobby);
+        }
+        else if (st == UdpLobbyClient.State.Failed)
+        {
+            ShowStatus(ServerSession.UdpClient.LastError, true);
+            ServerSession.Reset();
+            SetBusy(false);
+        }
+    }
+
+    void SetBusy(bool busy)
+    {
+        m_busy = busy;
+        joinButton.interactable = !busy;
+        nameField.interactable = !busy;
+        ipField.interactable = !busy;
+        portField.interactable = !busy;
+        if (protocolDropdown != null) protocolDropdown.interactable = !busy;
+        cancelButton.gameObject.SetActive(busy);   
+    }
+
+    void ShowStatus(string message, bool isError)
+    {
+        statusText.text = message;
+    }
+}
