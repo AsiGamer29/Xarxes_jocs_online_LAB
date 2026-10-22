@@ -6,8 +6,17 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/IndieMarc/PlatformerDemo/PlatformerDemo.unity
-    guid: 230ee21eea18d46e48f6038641c438b7
+    path: Assets/Scenes/MainMenu.unity
+    guid: 47c8be85825fc41438b8f86b3b5f15d5
   - enabled: 1
-    path: Assets/IndieMarc/TopDownDemo/TopDownDemo.unity
-    guid: 35fa846952ea23b41a9dca4d21464be1
+    path: Assets/Scenes/CreateGame.unity
+    guid: 74f914f6857bf1446b3a759ac9aefa0f
+  - enabled: 1
+    path: Assets/Scenes/JoinGame.unity
+    guid: a680cd09134debe48b8d387fad20e326
+  - enabled: 1
+    path: Assets/Scenes/Lobby.unity
+    guid: 4116260b4132e524d88c7d2ae799e962
+  - enabled: 1
+    path: Assets/Scenes/SampleScene.unity
+    guid: 8c9cfa26abfee488c85f1582747f6a02

@@ -36,8 +36,11 @@ public class UdpLobbyServer : MonoBehaviour
     volatile bool m_running;
     volatile State m_state = State.Idle;
     float m_lastHeartbeat;
+    bool m_gameStarted;
 
     public int ClientCount { get { return Math.Max(0, Players.Count - 1); } }
+    public bool GameStarted { get { return m_gameStarted; } }
+    public string LocalName { get { return m_members.Count > 0 ? m_members[0].name : ""; } }
 
 
     public void StartNetwork()
@@ -95,6 +98,7 @@ public class UdpLobbyServer : MonoBehaviour
         {
             m_lastHeartbeat = now;
             Broadcast("PLAYERS:" + string.Join(",", Players.ToArray()));
+            if (m_gameStarted) SendStart();   // a lost START would leave that player in the lobby
         }
     }
 
@@ -173,6 +177,7 @@ public class UdpLobbyServer : MonoBehaviour
         {
             case "JOIN":
                 if (member != null) { SendText("WELCOME:" + member.name, from); return; }
+                if (m_gameStarted) { SendText("CLOSE:", from); return; }   // no joining a game in progress
                 AddMember(from, content);
                 break;
 
@@ -214,6 +219,21 @@ public class UdpLobbyServer : MonoBehaviour
     {
         AddEvent(line);
         Broadcast("LOG:" + line);
+    }
+
+    // The host pressed Start. Each member gets START:<its own name>, so it knows which player is its own.
+    public void StartGame()
+    {
+        if (m_state != State.Running || m_gameStarted) return;
+        m_gameStarted = true;
+        SendStart();
+        AddEvent("[SERVER] Game started");
+    }
+
+    void SendStart()
+    {
+        foreach (Member m in m_members)
+            if (m.endpoint != null) SendText("START:" + m.name, m.endpoint);
     }
 
     public void SendHostChat(string text)

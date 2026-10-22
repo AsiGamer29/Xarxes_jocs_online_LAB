@@ -20,6 +20,8 @@ public class UdpLobbyClient : MonoBehaviour
     public int PlayersVersion;
     public int EventsVersion;
     public string LastError = "";
+    public bool GameStarted;
+    public string LocalName = "";
     public State Status { get { return m_state; } }
 
     const int MaxPacketSize = 4 * 1024;
@@ -146,6 +148,12 @@ public class UdpLobbyClient : MonoBehaviour
                     Players.AddRange(list);
                     PlayersVersion++;
                 }
+                break;
+
+            case "START":
+                if (GameStarted) break;   // the server repeats it every second
+                LocalName = content;
+                GameStarted = true;
                 break;
 
             case "CHAT":

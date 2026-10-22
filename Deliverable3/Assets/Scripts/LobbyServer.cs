@@ -32,8 +32,11 @@ public class LobbyServer : MonoBehaviour
     readonly List<Member> m_members = new List<Member>();
     volatile bool m_running;
     volatile State m_state = State.Idle;
+    bool m_gameStarted;
 
     public int ClientCount { get { return Math.Max(0, Players.Count - 1); } }
+    public bool GameStarted { get { return m_gameStarted; } }
+    public string LocalName { get { return m_members.Count > 0 ? m_members[0].name : ""; } }
 
 
     public void StartNetwork()
@@ -179,6 +182,7 @@ public class LobbyServer : MonoBehaviour
         {
             case "JOIN":
                 if (member != null) return;
+                if (m_gameStarted) { CloseSocket(from); return; }   // no joining a game in progress
                 AddMember(from, content);
                 break;
 
@@ -217,6 +221,18 @@ public class LobbyServer : MonoBehaviour
         AddEvent(line);
         Broadcast("LOG:" + line);
     }
+
+    // The host pressed Start. Each member gets START:<its own name>, so it knows which player is its own.
+    public void StartGame()
+    {
+        if (m_state != State.Running || m_gameStarted) return;
+        m_gameStarted = true;
+
+        foreach (Member m in m_members)
+            if (m.socket != null) SendPacket(Encoding.UTF8.GetBytes("START:" + m.name), m.socket);
+        AddEvent("[SERVER] Game started");
+    }
+
     public void SendHostChat(string text)
     {
         if (m_state != State.Running || m_members.Count == 0) return;

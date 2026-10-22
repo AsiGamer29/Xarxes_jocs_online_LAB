@@ -15,12 +15,14 @@ public class LobbyUI : MonoBehaviour
     [SerializeField] TMP_Text leaveButtonText;
     [SerializeField] TMP_InputField chatInput;
     [SerializeField] Button sendButton;
+    [SerializeField] Button startButton;
 
     bool m_isHost;
     bool m_udp;
     bool m_noSession;
     bool m_showedDisconnected;
     bool m_leaving;
+    bool m_loadingGame;
     int m_playersVersion = -1;
     int m_eventsVersion = -1;
 
@@ -78,6 +80,15 @@ public class LobbyUI : MonoBehaviour
         }
     }
 
+    bool GameStarted
+    {
+        get
+        {
+            if (m_udp) return m_isHost ? ServerSession.UdpServer.GameStarted : ServerSession.UdpClient.GameStarted;
+            return m_isHost ? ServerSession.Server.GameStarted : ServerSession.Client.GameStarted;
+        }
+    }
+
     void Start()
     {
         Application.runInBackground = true;
@@ -112,11 +123,20 @@ public class LobbyUI : MonoBehaviour
         sendButton.onClick.AddListener(OnSendClicked);
 
         statusText.text = "";
+        if (startButton != null) startButton.gameObject.SetActive(m_isHost);
     }
 
     void Update()
     {
-        if (m_noSession || m_leaving || !HasSession) return;
+        if (m_noSession || m_leaving || m_loadingGame || !HasSession) return;
+
+        // Host and clients load the game the same way: when their network object says it started.
+        if (Connected && GameStarted)
+        {
+            m_loadingGame = true;
+            SceneManager.LoadScene(ServerSession.SceneGame);
+            return;
+        }
 
         if (PlayersVersion != m_playersVersion) RefreshPlayers();
         if (EventsVersion != m_eventsVersion) RefreshEvents();
@@ -168,6 +188,13 @@ public class LobbyUI : MonoBehaviour
         if (!m_isHost && ServerSession.UdpClient != null) ServerSession.UdpClient.Leave();
         ServerSession.Reset();
         SceneManager.LoadScene(ServerSession.SceneMenu);
+    }
+
+    public void OnStartClicked()
+    {
+        if (!m_isHost) return;
+        if (m_udp) ServerSession.UdpServer.StartGame();
+        else ServerSession.Server.StartGame();
     }
 
     public void OnSendClicked()

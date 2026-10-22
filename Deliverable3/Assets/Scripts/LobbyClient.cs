@@ -20,6 +20,8 @@ public class LobbyClient : MonoBehaviour
     public int PlayersVersion;
     public int EventsVersion;
     public string LastError = "";
+    public bool GameStarted;
+    public string LocalName = "";
     public State Status { get { return m_state; } }
 
     const int MaxPacketSize = 64 * 1024;
@@ -105,6 +107,11 @@ public class LobbyClient : MonoBehaviour
                 foreach (string n in content.Split(','))
                     if (n.Length > 0) Players.Add(n);
                 PlayersVersion++;
+                break;
+
+            case "START":
+                LocalName = content;
+                GameStarted = true;
                 break;
 
             case "CHAT":
