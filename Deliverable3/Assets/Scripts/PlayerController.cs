@@ -15,6 +15,8 @@ public class PlayerController : MonoBehaviour
 
     private float moveInput;
     private bool isGrounded;
+    private bool isCrouching;
+    private bool canMove;
 
     void Awake()
     {
@@ -25,7 +27,10 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        moveInput = Input.GetAxisRaw("Horizontal");
+        if(isCrouching == false)
+        {
+            moveInput = Input.GetAxisRaw("Horizontal");
+        }
 
         isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundRadius, groundLayer);
 
@@ -33,11 +38,21 @@ public class PlayerController : MonoBehaviour
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
         }
+        
+        if (Input.GetButton("Fire1") && isGrounded)
+        {
+            isCrouching = true;
+        }
+        else
+        {
+            isCrouching = false;
+        }
 
         if (moveInput > 0) sr.flipX = false;
         else if (moveInput < 0) sr.flipX = true;
 
         anim.SetFloat("Speed", Mathf.Abs(moveInput));
+        anim.SetBool("IsCrouching", isCrouching);
         anim.SetBool("IsGrounded", isGrounded);
     }
 

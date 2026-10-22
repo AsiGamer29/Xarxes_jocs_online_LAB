@@ -28,7 +28,7 @@ Transform:
   m_GameObject: {fileID: 2906081048563765237}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -12.5, y: 3.5, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -83,8 +83,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -1081227460994213724, guid: 435a4c4115b300141b9a36023df2451b,
-    type: 3}
+  m_Sprite: {fileID: 1064166727, guid: 435a4c4115b300141b9a36023df2451b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -152,9 +151,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d4b92258fb5a4046a7f20a646650c97, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  unpressedSprite: {fileID: -1081227460994213724, guid: 435a4c4115b300141b9a36023df2451b,
-    type: 3}
-  pressedSprite: {fileID: 1279194840, guid: 435a4c4115b300141b9a36023df2451b, type: 3}
+  unpressedSprite: {fileID: 1064166727, guid: 435a4c4115b300141b9a36023df2451b, type: 3}
+  pressedSprite: {fileID: 133116498, guid: 435a4c4115b300141b9a36023df2451b, type: 3}
   pressedColliderSize: {x: 0.9, y: 0.2}
   pressedColliderOffset: {x: 0, y: -0.4}
   onPressed:
