@@ -16,6 +16,7 @@ public class UdpLobbyServer : MonoBehaviour
 
     public readonly List<string> Players = new List<string>();
     public readonly List<string> Events = new List<string>();
+    public readonly Dictionary<string, Vector2> RemotePositions = new Dictionary<string, Vector2>();
     public int PlayersVersion;
     public int EventsVersion;
     public string LastError = "";
@@ -81,7 +82,9 @@ public class UdpLobbyServer : MonoBehaviour
     void Update()
     {
         Packet p;
-        while (m_inbox.TryDequeue(out p)) HandleMessage(p.data, p.from);
+        while (m_inbox.TryDequeue(out p)) 
+            HandleMessage(p.data, p.from);
+
 
         if (m_state != State.Running) return;
 
@@ -193,6 +196,17 @@ public class UdpLobbyServer : MonoBehaviour
             case "LEAVE":
                 if (member != null) RemoveMember(member, " left the lobby");
                 break;
+
+            case "POS":
+                
+                if (member == null) return;
+                Vector2 pos;
+                string ignored;
+                if (!ServerSession.TryParsePos(content, out pos, out ignored)) return;
+                RemotePositions[member.name] = pos;
+                RelayPosition(member, pos);
+                break;
+                
         }
     }
 
@@ -240,6 +254,21 @@ public class UdpLobbyServer : MonoBehaviour
     {
         if (m_state != State.Running || m_members.Count == 0) return;
         HandleChat(m_members[0].name, text);
+    }
+
+    // A client moved: tell everybody else (not the sender).
+    void RelayPosition(Member from, Vector2 pos)
+    {
+        byte[] payload = Encoding.UTF8.GetBytes("POS:" + ServerSession.FormatXY(pos) + ";" + from.name);
+        foreach (Member m in m_members)
+            if (m.endpoint != null && m != from) SendPacket(payload, m.endpoint);
+    }
+
+    // The host moved: tell every client.
+    public void SendHostPosition(Vector2 pos)
+    {
+        if (m_state != State.Running || m_members.Count == 0) return;
+        Broadcast("POS:" + ServerSession.FormatXY(pos) + ";" + m_members[0].name);
     }
 
     void HandleChat(string senderName, string raw)

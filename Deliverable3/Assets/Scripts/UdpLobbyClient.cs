@@ -17,6 +17,7 @@ public class UdpLobbyClient : MonoBehaviour
 
     public readonly List<string> Players = new List<string>();
     public readonly List<string> Events = new List<string>();
+    public readonly Dictionary<string, Vector2> RemotePositions = new Dictionary<string, Vector2>();
     public int PlayersVersion;
     public int EventsVersion;
     public string LastError = "";
@@ -52,6 +53,11 @@ public class UdpLobbyClient : MonoBehaviour
         if (m_state != State.Connected) return;
         if (string.IsNullOrWhiteSpace(text)) return;
         SendString("CHAT:" + text);
+    }
+    public void SendPosition(Vector2 pos)
+    {
+        if (m_state != State.Connected) return;
+        SendString("POS:" + ServerSession.FormatXY(pos));
     }
 
     public void Leave()
@@ -161,6 +167,14 @@ public class UdpLobbyClient : MonoBehaviour
                 AddEvent(content);
                 break;
 
+            case "POS":
+                
+                 Vector2 remotePos;
+                 string remoteName;
+                 if (ServerSession.TryParsePos(content, out remotePos, out remoteName) && remoteName.Length > 0) 
+                    RemotePositions[remoteName] = remotePos;
+                 break;
+                
             case "CLOSE":
                 OnConnectionClosed();
                 break;

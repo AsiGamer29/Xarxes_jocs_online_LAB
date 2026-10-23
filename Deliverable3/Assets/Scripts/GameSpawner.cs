@@ -40,6 +40,8 @@ public class GameSpawner : MonoBehaviour
         GameObject player = Instantiate(playerPrefab, position, Quaternion.identity);
         player.name = "Player_" + playerName;
         player.tag = "Player";
+        PlayerNetSync sync = player.AddComponent<PlayerNetSync>();
+        sync.Init(playerName, isLocal);
 
         if (!isLocal) MakeRemote(player);
     }

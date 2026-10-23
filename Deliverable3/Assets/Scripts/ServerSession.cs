@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Globalization;
 using UnityEngine;
 
 public static class ServerSession
@@ -113,5 +114,49 @@ public static class ServerSession
         catch { }
 
         return "127.0.0.1";
+    }
+
+    // True when the game is running over UDP (movement only goes through UDP for now).
+    public static bool UdpGame
+    {
+        get { return SelectedProtocol == Protocol.UDP && (UdpServer != null || UdpClient != null); }
+    }
+
+    public static void SendMyPosition(Vector2 p)
+    {
+        if (UdpServer != null) UdpServer.SendHostPosition(p);
+        else if (UdpClient != null) UdpClient.SendPosition(p);
+    }
+
+    public static bool TryGetRemotePosition(string name, out Vector2 p)
+    {
+        p = default(Vector2);
+        if (UdpServer != null) return UdpServer.RemotePositions.TryGetValue(name, out p);
+        if (UdpClient != null) return UdpClient.RemotePositions.TryGetValue(name, out p);
+        return false;
+    }
+
+    // "x;y"  (InvariantCulture so "1,5" vs "1.5" never breaks between PCs)
+    public static string FormatXY(Vector2 p)
+    {
+        return p.x.ToString("F2", CultureInfo.InvariantCulture) + ";" +
+               p.y.ToString("F2", CultureInfo.InvariantCulture);
+    }
+
+    // Accepts "x;y" or "x;y;name"
+    public static bool TryParsePos(string content, out Vector2 pos, out string name)
+    {
+        pos = default(Vector2);
+        name = "";
+        string[] a = content.Split(new char[] { ';' }, 3);
+        if (a.Length < 2) return false;
+
+        float x, y;
+        if (!float.TryParse(a[0], NumberStyles.Float, CultureInfo.InvariantCulture, out x)) return false;
+        if (!float.TryParse(a[1], NumberStyles.Float, CultureInfo.InvariantCulture, out y)) return false;
+
+        pos = new Vector2(x, y);
+        if (a.Length == 3) name = a[2];
+        return true;
     }
 }
