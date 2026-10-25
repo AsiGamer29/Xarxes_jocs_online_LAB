@@ -257,7 +257,7 @@ TextureImporter:
       name: everythinga_6
       rect:
         serializedVersion: 2
-        x: 0
+        x: 16
         y: 48
         width: 16
         height: 16
@@ -279,7 +279,7 @@ TextureImporter:
       name: everythinga_7
       rect:
         serializedVersion: 2
-        x: 16
+        x: 48
         y: 48
         width: 16
         height: 16
@@ -323,7 +323,7 @@ TextureImporter:
       name: everythinga_8
       rect:
         serializedVersion: 2
-        x: 48
+        x: 64
         y: 48
         width: 16
         height: 16
@@ -345,7 +345,7 @@ TextureImporter:
       name: everythinga_9
       rect:
         serializedVersion: 2
-        x: 64
+        x: 80
         y: 48
         width: 16
         height: 16
@@ -367,8 +367,8 @@ TextureImporter:
       name: everythinga_10
       rect:
         serializedVersion: 2
-        x: 0
-        y: 32
+        x: 96
+        y: 48
         width: 16
         height: 16
       alignment: 0
@@ -389,7 +389,7 @@ TextureImporter:
       name: everythinga_11
       rect:
         serializedVersion: 2
-        x: 16
+        x: 0
         y: 32
         width: 16
         height: 16
@@ -403,6 +403,116 @@ TextureImporter:
       bones: []
       spriteID: 48c7b55ad31198d4bac00023d29cdbae
       internalID: -360443797
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: everythinga_12
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 32
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1d855b4c22d912a4f9fcb8de92b7f917
+      internalID: 70609429
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: everythinga_13
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 32
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ae031ba31ed1c8f4bbc92f7fc70d3bcc
+      internalID: 1294270992
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: everythinga_14
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 32
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a5a7eb095e2fe084ba699ce042c49129
+      internalID: 812398212
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: everythinga_15
+      rect:
+        serializedVersion: 2
+        x: 80
+        y: 32
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e87e92546eed67d478cfa60661a63141
+      internalID: -416130883
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: everythinga_16
+      rect:
+        serializedVersion: 2
+        x: 96
+        y: 32
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0c75a8f7ca71b7342baea6e9682acae0
+      internalID: 1412116976
       vertices: []
       indices: 
       edges: []
@@ -427,6 +537,11 @@ TextureImporter:
       everythinga_1: 3179939676348311022
       everythinga_10: -1294955377
       everythinga_11: -360443797
+      everythinga_12: 70609429
+      everythinga_13: 1294270992
+      everythinga_14: 812398212
+      everythinga_15: -416130883
+      everythinga_16: 1412116976
       everythinga_2: 3198465472399531181
       everythinga_3: 6120925049640653913
       everythinga_4: 6330601529107096407

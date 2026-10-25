@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 // Spawns one Player per lobby member when the game scene loads, in the order the server sent the
@@ -43,6 +44,8 @@ public class GameSpawner : MonoBehaviour
         PlayerNetSync sync = player.AddComponent<PlayerNetSync>();
         sync.Init(playerName, isLocal);
 
+        SetNameTag(player, playerName, isLocal);
+
         if (!isLocal) MakeRemote(player);
     }
 
@@ -58,4 +61,15 @@ public class GameSpawner : MonoBehaviour
             body.linearVelocity = Vector2.zero;
         }
     }
+
+    void SetNameTag(GameObject player, string playerName, bool isLocal)
+    {
+        Transform tagTransform = player.transform.Find("NameTag");
+        if (tagTransform == null) return;
+
+        TMP_Text tag = tagTransform.GetComponent<TMP_Text>();
+        tag.text = playerName;
+
+    }
+
 }
