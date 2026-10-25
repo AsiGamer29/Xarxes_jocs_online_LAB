@@ -184,6 +184,13 @@ public class UdpLobbyServer : MonoBehaviour
                 if (ServerSession.StoreIfNewer(RemoteStates, state))
                     SendToOthers(Serializer.Pack(MsgType.PlayerState, Serializer.Serialize(state)), member);
                 break;
+
+            case MsgType.ButtonPress:
+                ButtonPressDTO press;
+                if (member == null || !Serializer.TryDeserialize(data, 1, out press)) return;
+                PButton.PressFromNetwork(press.buttonId);
+                SendToOthers(Serializer.Pack(MsgType.ButtonPress, Serializer.Serialize(press)), member);
+                break;
         }
     }
 
@@ -275,6 +282,13 @@ public class UdpLobbyServer : MonoBehaviour
     {
         if (m_state != State.Running) return;
         SendToOthers(Serializer.Pack(MsgType.GameState, Serializer.Serialize(game)), null);
+    }
+
+    public void SendButtonPress(int id)
+    {
+        if (m_state != State.Running) return;
+        byte[] packet = Serializer.Pack(MsgType.ButtonPress, Serializer.Serialize(new ButtonPressDTO { buttonId = id }));
+        for (int i = 0; i < 3; i++) SendToOthers(packet, null);
     }
 
     // Every client except 'skip' (the one who sent it). null = all of them.

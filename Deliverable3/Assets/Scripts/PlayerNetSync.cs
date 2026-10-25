@@ -32,6 +32,8 @@ public class PlayerNetSync : MonoBehaviour
         m_isLocal = isLocal;
     }
 
+    public bool IsLocal { get { return m_isLocal; } }
+
     void Update()
     {
         if (!ServerSession.UdpGame) return;

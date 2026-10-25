@@ -63,6 +63,13 @@ public class UdpLobbyClient : MonoBehaviour
         SendBytes(Serializer.Pack(MsgType.PlayerState, Serializer.Serialize(state)));
     }
 
+    public void SendButtonPress(int id)
+    {
+        if (m_state != State.Connected) return;
+        byte[] packet = Serializer.Pack(MsgType.ButtonPress, Serializer.Serialize(new ButtonPressDTO { buttonId = id }));
+        for (int i = 0; i < 3; i++) SendBytes(packet);
+    }
+
     public void Leave()
     {
         SendString("LEAVE:");
@@ -146,6 +153,11 @@ public class UdpLobbyClient : MonoBehaviour
             case MsgType.GameState:
                 GameStateDTO game;
                 if (Serializer.TryDeserialize(data, 1, out game)) { GameState = game; HasGameState = true; }
+                break;
+
+            case MsgType.ButtonPress:
+                ButtonPressDTO press;
+                if (Serializer.TryDeserialize(data, 1, out press)) PButton.PressFromNetwork(press.buttonId);
                 break;
         }
     }

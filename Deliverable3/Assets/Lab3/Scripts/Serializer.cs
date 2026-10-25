@@ -228,6 +228,28 @@ public static class Serializer
         catch (IOException) { return false; }
     }
 
+    public static byte[] Serialize(ButtonPressDTO dto)
+    {
+        MemoryStream stream = new MemoryStream();
+        BinaryWriter writer = new BinaryWriter(stream);
+
+        writer.Write(dto.buttonId);
+
+        return stream.ToArray();
+    }
+
+    public static bool TryDeserialize(byte[] data, int offset, out ButtonPressDTO dto)
+    {
+        dto = new ButtonPressDTO();
+        try
+        {
+            BinaryReader reader = new BinaryReader(new MemoryStream(data, offset, data.Length - offset));
+            dto.buttonId = reader.ReadInt32();
+            return true;
+        }
+        catch (IOException) { return false; }
+    }
+
     // =============================================================================================
     //  GIVEN CODE
     // =============================================================================================
