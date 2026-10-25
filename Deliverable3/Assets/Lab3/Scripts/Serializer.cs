@@ -204,6 +204,8 @@ public static class Serializer
         writer.Write(dto.taggedPlayer ?? "");
         writer.Write(dto.timeLeft);
         writer.Write(dto.loser ?? "");
+        writer.Write(dto.scores ?? "");
+        writer.Write(dto.winners ?? "");
 
         return stream.ToArray();
     }
@@ -219,6 +221,8 @@ public static class Serializer
             dto.taggedPlayer = reader.ReadString();
             dto.timeLeft = reader.ReadSingle();
             dto.loser = reader.ReadString();
+            dto.scores = reader.ReadString();
+            dto.winners = reader.ReadString();
             return true;
         }
         catch (IOException) { return false; }

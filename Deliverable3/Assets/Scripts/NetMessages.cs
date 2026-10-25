@@ -26,7 +26,7 @@ public struct PlayerStateDTO
     public bool dashing;
 }
 
-public enum GamePhase : byte { Waiting = 0, Playing = 1, RoundOver = 2 }
+public enum GamePhase : byte { Waiting = 0, Playing = 1, RoundOver = 2, MatchOver = 3 }
 
 // The tag round as the server sees it. It is sent again and again, so a lost packet only means
 // the next one arrives 0.1 s later.
@@ -38,4 +38,6 @@ public struct GameStateDTO
     public string taggedPlayer;   // the one who "la lleva"
     public float timeLeft;        // seconds left in the round, or until the next one starts
     public string loser;          // who had it when the time ran out
+    public string scores;         // Rounds won per player
+    public string winners;        // Best of 3
 }
