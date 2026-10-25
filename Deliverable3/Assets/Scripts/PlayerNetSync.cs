@@ -1,24 +1,29 @@
 using UnityEngine;
 
-// Added to every player in scene by GameSpawner script
+// Added to every player by GameSpawner. Game data only travels over UDP.
+// The local player sends its state about 20 times per second, in binary (PlayerStateDTO).
+// The others follow the last state received: the position is smoothed so that 20 packets per
+// second look like continuous movement, and the animation uses the state that was sent.
 public class PlayerNetSync : MonoBehaviour
 {
     const float SendRate = 20f;   // packets per second
-    const float Smooth = 15f;     
+    const float Smooth = 15f;     // how fast a remote player catches up with the last position
 
     string m_name;
     bool m_isLocal;
     float m_nextSend;
-    bool m_hasTarget;
-    Vector2 m_target;
+    uint m_sequence;
+    bool m_placed;
 
     SpriteRenderer m_sr;
     Animator m_anim;
+    PlayerController m_controller;
 
     void Awake()
     {
         m_sr = GetComponent<SpriteRenderer>();
         m_anim = GetComponent<Animator>();
+        m_controller = GetComponent<PlayerController>();
     }
 
     public void Init(string playerName, bool isLocal)
@@ -29,39 +34,51 @@ public class PlayerNetSync : MonoBehaviour
 
     void Update()
     {
-        // movement only over UDP, needs to be changed when we combine UDP and TCP in the same session (the movement will still work with UDP)
-        if (!ServerSession.UdpGame) return;   
+        if (!ServerSession.UdpGame) return;
 
-        if (m_isLocal)
+        if (m_isLocal) SendState();
+        else FollowState();
+    }
+
+    void SendState()
+    {
+        if (Time.time < m_nextSend || m_controller == null) return;
+        m_nextSend = Time.time + 1f / SendRate;
+
+        PlayerStateDTO state = new PlayerStateDTO
         {
-            if (Time.time >= m_nextSend)
-            {
-                m_nextSend = Time.time + 1f / SendRate;
-                ServerSession.SendMyPosition(transform.position);
-            }
-            return;
-        }
+            sequence = ++m_sequence,
+            playerName = m_name,
+            x = transform.position.x,
+            y = transform.position.y,
+            facingRight = m_controller.FacingRight,
+            moving = m_controller.IsMoving,
+            grounded = m_controller.IsGrounded,
+            crouching = m_controller.IsCrouching,
+            dashing = m_controller.IsDashing,
+        };
+        ServerSession.SendMyState(state);
+    }
 
-        Vector2 p;
-        if (ServerSession.TryGetRemotePosition(m_name, out p))
-        {
-            if (!m_hasTarget) { transform.position = new Vector3(p.x, p.y, transform.position.z); m_hasTarget = true; }
-            m_target = p;
-        }
-        if (!m_hasTarget) return;
+    void FollowState()
+    {
+        PlayerStateDTO state;
+        if (!ServerSession.TryGetRemoteState(m_name, out state)) return;
 
-        Vector2 cur = transform.position;
-        Vector2 next = Vector2.Lerp(cur, m_target, 1f - Mathf.Exp(-Smooth * Time.deltaTime));
-        float dx = next.x - cur.x;
-        float dy = next.y - cur.y;
+        Vector2 target = new Vector2(state.x, state.y);
+        Vector2 next = m_placed
+            ? Vector2.Lerp(transform.position, target, 1f - Mathf.Exp(-Smooth * Time.deltaTime))
+            : target;   // first packet: jump straight there
+        m_placed = true;
+        transform.position = new Vector3(next.x, next.y, transform.position.z);
 
-        if (Mathf.Abs(dx) > 0.001f && m_sr != null) m_sr.flipX = dx < 0;
+        if (m_sr != null) m_sr.flipX = !state.facingRight;
         if (m_anim != null)
         {
-            m_anim.SetFloat("Speed", Mathf.Abs(dx) > 0.001f ? 1f : 0f);
-            m_anim.SetBool("IsGrounded", Mathf.Abs(dy) < 0.01f);
+            m_anim.SetFloat("Speed", state.moving ? 1f : 0f);
+            m_anim.SetBool("IsGrounded", state.grounded);
+            m_anim.SetBool("IsCrouching", state.crouching);
+            m_anim.SetBool("IsDashing", state.dashing);
         }
-
-        transform.position = new Vector3(next.x, next.y, transform.position.z);
     }
 }

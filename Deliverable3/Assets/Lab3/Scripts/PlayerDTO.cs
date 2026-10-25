@@ -36,9 +36,4 @@ public struct PlayerDTO2
     public List<Pokemon> ownedPokemons;
 }
 
-// Challenge 3 (slide 18): the first byte of every message says what follows.
-public enum MsgType : byte
-{
-    Text = 1,     // your lobby messages as they are now: JOIN:Anna, CHAT:hello...
-    Player = 2,   // a PlayerDTO2
-}
+// MsgType (challenge 3, slide 18) is in Scripts/NetMessages.cs, with the game messages.

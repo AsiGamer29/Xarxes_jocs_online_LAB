@@ -18,6 +18,14 @@ public class GameSpawner : MonoBehaviour
         new Vector2(-8f, -2f),      // lower left platform
     };
 
+    readonly Dictionary<string, GameObject> m_players = new Dictionary<string, GameObject>();
+    GameObject m_localPlayer;
+    Vector2 m_localSpawn;
+    float m_nextCleanup;
+
+    // Every player on screen, by name. TagGame reads it.
+    public IReadOnlyDictionary<string, GameObject> Players { get { return m_players; } }
+
     void Start()
     {
         List<string> players = ServerSession.CurrentPlayers;
@@ -33,6 +41,38 @@ public class GameSpawner : MonoBehaviour
         List<string> names = new List<string>(players);
         for (int i = 0; i < names.Count; i++)
             Spawn(names[i], i, names[i] == localName);
+
+        gameObject.AddComponent<TagGame>();
+    }
+
+    // Someone left the room: take their player off the screen.
+    void Update()
+    {
+        if (Time.time < m_nextCleanup) return;
+        m_nextCleanup = Time.time + 0.5f;
+
+        List<string> room = ServerSession.CurrentPlayers;
+        if (room == null) return;
+
+        List<string> gone = new List<string>();
+        foreach (string name in m_players.Keys)
+            if (!room.Contains(name)) gone.Add(name);
+
+        foreach (string name in gone)
+        {
+            Destroy(m_players[name]);
+            m_players.Remove(name);
+        }
+    }
+
+    // New round: back to the start. Only the local player; the others follow through the network.
+    public void RespawnLocal()
+    {
+        if (m_localPlayer == null) return;
+        m_localPlayer.transform.position = m_localSpawn;
+
+        Rigidbody2D body = m_localPlayer.GetComponent<Rigidbody2D>();
+        if (body != null) body.linearVelocity = Vector2.zero;
     }
 
     void Spawn(string playerName, int index, bool isLocal)
@@ -45,8 +85,14 @@ public class GameSpawner : MonoBehaviour
         sync.Init(playerName, isLocal);
 
         SetNameTag(player, playerName, isLocal);
+        m_players[playerName] = player;
 
-        if (!isLocal) MakeRemote(player);
+        if (isLocal)
+        {
+            m_localPlayer = player;
+            m_localSpawn = position;
+        }
+        else MakeRemote(player);
     }
 
     static void MakeRemote(GameObject player)

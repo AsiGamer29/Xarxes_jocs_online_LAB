@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Globalization;
 using UnityEngine;
 
 public static class ServerSession
@@ -122,41 +121,45 @@ public static class ServerSession
         get { return SelectedProtocol == Protocol.UDP && (UdpServer != null || UdpClient != null); }
     }
 
-    public static void SendMyPosition(Vector2 p)
+    // The local player's state: the host sends it to every client, a client sends it to the host.
+    public static void SendMyState(PlayerStateDTO state)
     {
-        if (UdpServer != null) UdpServer.SendHostPosition(p);
-        else if (UdpClient != null) UdpClient.SendPosition(p);
+        if (UdpServer != null) UdpServer.SendHostState(state);
+        else if (UdpClient != null) UdpClient.SendState(state);
     }
 
-    public static bool TryGetRemotePosition(string name, out Vector2 p)
+    public static bool TryGetRemoteState(string name, out PlayerStateDTO state)
     {
-        p = default(Vector2);
-        if (UdpServer != null) return UdpServer.RemotePositions.TryGetValue(name, out p);
-        if (UdpClient != null) return UdpClient.RemotePositions.TryGetValue(name, out p);
+        state = default(PlayerStateDTO);
+        if (UdpServer != null) return UdpServer.RemoteStates.TryGetValue(name, out state);
+        if (UdpClient != null) return UdpClient.RemoteStates.TryGetValue(name, out state);
         return false;
     }
 
-    // "x;y"  (InvariantCulture so "1,5" vs "1.5" never breaks between PCs)
-    public static string FormatXY(Vector2 p)
+    // UDP can deliver an old packet after a newer one. Keep only the newest per player.
+    // The subtraction keeps working when the counter wraps around.
+    public static bool StoreIfNewer(Dictionary<string, PlayerStateDTO> states, PlayerStateDTO state)
     {
-        return p.x.ToString("F2", CultureInfo.InvariantCulture) + ";" +
-               p.y.ToString("F2", CultureInfo.InvariantCulture);
+        PlayerStateDTO previous;
+        if (states.TryGetValue(state.playerName, out previous) && (int)(state.sequence - previous.sequence) <= 0)
+            return false;
+        states[state.playerName] = state;
+        return true;
     }
 
-    // Accepts "x;y" or "x;y;name"
-    public static bool TryParsePos(string content, out Vector2 pos, out string name)
+    // The host runs the tag rules; clients only show what it sends.
+    public static bool IsGameServer { get { return UdpServer != null; } }
+
+    public static void SendGameState(GameStateDTO game)
     {
-        pos = default(Vector2);
-        name = "";
-        string[] a = content.Split(new char[] { ';' }, 3);
-        if (a.Length < 2) return false;
+        if (UdpServer != null) UdpServer.SendGameState(game);
+    }
 
-        float x, y;
-        if (!float.TryParse(a[0], NumberStyles.Float, CultureInfo.InvariantCulture, out x)) return false;
-        if (!float.TryParse(a[1], NumberStyles.Float, CultureInfo.InvariantCulture, out y)) return false;
-
-        pos = new Vector2(x, y);
-        if (a.Length == 3) name = a[2];
+    public static bool TryGetGameState(out GameStateDTO game)
+    {
+        game = default(GameStateDTO);
+        if (UdpClient == null || !UdpClient.HasGameState) return false;
+        game = UdpClient.GameState;
         return true;
     }
 }

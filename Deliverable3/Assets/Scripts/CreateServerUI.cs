@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class CreateGameUI : MonoBehaviour
+public class CreateServerUI : MonoBehaviour
 {
     [Header("Campos")]
     [SerializeField] TMP_InputField ipField;

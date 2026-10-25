@@ -17,12 +17,14 @@ public class UdpLobbyClient : MonoBehaviour
 
     public readonly List<string> Players = new List<string>();
     public readonly List<string> Events = new List<string>();
-    public readonly Dictionary<string, Vector2> RemotePositions = new Dictionary<string, Vector2>();
+    public readonly Dictionary<string, PlayerStateDTO> RemoteStates = new Dictionary<string, PlayerStateDTO>();
     public int PlayersVersion;
     public int EventsVersion;
     public string LastError = "";
     public bool GameStarted;
     public string LocalName = "";
+    public GameStateDTO GameState;
+    public bool HasGameState;
     public State Status { get { return m_state; } }
 
     const int MaxPacketSize = 4 * 1024;
@@ -54,10 +56,11 @@ public class UdpLobbyClient : MonoBehaviour
         if (string.IsNullOrWhiteSpace(text)) return;
         SendString("CHAT:" + text);
     }
-    public void SendPosition(Vector2 pos)
+
+    public void SendState(PlayerStateDTO state)
     {
         if (m_state != State.Connected) return;
-        SendString("POS:" + ServerSession.FormatXY(pos));
+        SendBytes(Serializer.Pack(MsgType.PlayerState, Serializer.Serialize(state)));
     }
 
     public void Leave()
@@ -127,7 +130,28 @@ public class UdpLobbyClient : MonoBehaviour
 
     void OnPacketReceived(byte[] data, float now)
     {
-        string text = Encoding.UTF8.GetString(data);
+        if (data.Length == 0) return;
+
+        switch ((MsgType)data[0])
+        {
+            case MsgType.Text:
+                OnTextReceived(Serializer.ReadText(data), now);
+                break;
+
+            case MsgType.PlayerState:
+                PlayerStateDTO state;
+                if (Serializer.TryDeserialize(data, 1, out state)) ServerSession.StoreIfNewer(RemoteStates, state);
+                break;
+
+            case MsgType.GameState:
+                GameStateDTO game;
+                if (Serializer.TryDeserialize(data, 1, out game)) { GameState = game; HasGameState = true; }
+                break;
+        }
+    }
+
+    void OnTextReceived(string text, float now)
+    {
         int i = text.IndexOf(':');
         string type = i < 0 ? text : text.Substring(0, i);
         string content = i < 0 ? "" : text.Substring(i + 1);
@@ -167,14 +191,6 @@ public class UdpLobbyClient : MonoBehaviour
                 AddEvent(content);
                 break;
 
-            case "POS":
-                
-                 Vector2 remotePos;
-                 string remoteName;
-                 if (ServerSession.TryParsePos(content, out remotePos, out remoteName) && remoteName.Length > 0) 
-                    RemotePositions[remoteName] = remotePos;
-                 break;
-                
             case "CLOSE":
                 OnConnectionClosed();
                 break;
@@ -265,12 +281,15 @@ public class UdpLobbyClient : MonoBehaviour
 
     void SendString(string text)
     {
+        SendBytes(Serializer.PackText(text));
+    }
+
+    void SendBytes(byte[] packet)
+    {
         Socket s = m_connection;
         if (s == null) return;
 
-        byte[] payload = Encoding.UTF8.GetBytes(text);
-
-        try { s.Send(payload); }
+        try { s.Send(packet); }
         catch (SocketException e) { Debug.Log("[CLIENT] Send failed: " + e.SocketErrorCode); }
         catch (ObjectDisposedException) { }
     }

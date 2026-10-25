@@ -16,7 +16,7 @@ public class UdpLobbyServer : MonoBehaviour
 
     public readonly List<string> Players = new List<string>();
     public readonly List<string> Events = new List<string>();
-    public readonly Dictionary<string, Vector2> RemotePositions = new Dictionary<string, Vector2>();
+    public readonly Dictionary<string, PlayerStateDTO> RemoteStates = new Dictionary<string, PlayerStateDTO>();
     public int PlayersVersion;
     public int EventsVersion;
     public string LastError = "";
@@ -82,9 +82,7 @@ public class UdpLobbyServer : MonoBehaviour
     void Update()
     {
         Packet p;
-        while (m_inbox.TryDequeue(out p)) 
-            HandleMessage(p.data, p.from);
-
+        while (m_inbox.TryDequeue(out p)) HandleMessage(p.data, p.from);
 
         if (m_state != State.Running) return;
 
@@ -168,13 +166,32 @@ public class UdpLobbyServer : MonoBehaviour
 
     void HandleMessage(byte[] data, IPEndPoint from)
     {
-        string text = Encoding.UTF8.GetString(data);
-        int i = text.IndexOf(':');
-        string type = i < 0 ? text : text.Substring(0, i);
-        string content = i < 0 ? "" : text.Substring(i + 1);
+        if (data.Length == 0) return;
 
         Member member = FindMember(from);
         if (member != null) member.lastSeen = Time.realtimeSinceStartup;
+
+        switch ((MsgType)data[0])
+        {
+            case MsgType.Text:
+                HandleText(Serializer.ReadText(data), member, from);
+                break;
+
+            case MsgType.PlayerState:
+                PlayerStateDTO state;
+                if (member == null || !Serializer.TryDeserialize(data, 1, out state)) return;
+                state.playerName = member.name;   // trust the address, not what the packet says
+                if (ServerSession.StoreIfNewer(RemoteStates, state))
+                    SendToOthers(Serializer.Pack(MsgType.PlayerState, Serializer.Serialize(state)), member);
+                break;
+        }
+    }
+
+    void HandleText(string text, Member member, IPEndPoint from)
+    {
+        int i = text.IndexOf(':');
+        string type = i < 0 ? text : text.Substring(0, i);
+        string content = i < 0 ? "" : text.Substring(i + 1);
 
         switch (type)
         {
@@ -196,17 +213,6 @@ public class UdpLobbyServer : MonoBehaviour
             case "LEAVE":
                 if (member != null) RemoveMember(member, " left the lobby");
                 break;
-
-            case "POS":
-                
-                if (member == null) return;
-                Vector2 pos;
-                string ignored;
-                if (!ServerSession.TryParsePos(content, out pos, out ignored)) return;
-                RemotePositions[member.name] = pos;
-                RelayPosition(member, pos);
-                break;
-                
         }
     }
 
@@ -224,6 +230,7 @@ public class UdpLobbyServer : MonoBehaviour
     {
         if (m == null) return;
         if (!m_members.Remove(m)) return;
+        RemoteStates.Remove(m.name);
 
         BroadcastPlayers();
         Announce("[PLAYER] " + m.name + suffix);
@@ -256,19 +263,25 @@ public class UdpLobbyServer : MonoBehaviour
         HandleChat(m_members[0].name, text);
     }
 
-    // A client moved: tell everybody else (not the sender).
-    void RelayPosition(Member from, Vector2 pos)
-    {
-        byte[] payload = Encoding.UTF8.GetBytes("POS:" + ServerSession.FormatXY(pos) + ";" + from.name);
-        foreach (Member m in m_members)
-            if (m.endpoint != null && m != from) SendPacket(payload, m.endpoint);
-    }
-
-    // The host moved: tell every client.
-    public void SendHostPosition(Vector2 pos)
+    // The host plays too: its own state goes to every client.
+    public void SendHostState(PlayerStateDTO state)
     {
         if (m_state != State.Running || m_members.Count == 0) return;
-        Broadcast("POS:" + ServerSession.FormatXY(pos) + ";" + m_members[0].name);
+        state.playerName = m_members[0].name;
+        SendToOthers(Serializer.Pack(MsgType.PlayerState, Serializer.Serialize(state)), null);
+    }
+
+    public void SendGameState(GameStateDTO game)
+    {
+        if (m_state != State.Running) return;
+        SendToOthers(Serializer.Pack(MsgType.GameState, Serializer.Serialize(game)), null);
+    }
+
+    // Every client except 'skip' (the one who sent it). null = all of them.
+    void SendToOthers(byte[] packet, Member skip)
+    {
+        foreach (Member m in m_members)
+            if (m.endpoint != null && m != skip) SendPacket(packet, m.endpoint);
     }
 
     void HandleChat(string senderName, string raw)
@@ -298,14 +311,12 @@ public class UdpLobbyServer : MonoBehaviour
 
     void Broadcast(string text)
     {
-        byte[] payload = Encoding.UTF8.GetBytes(text);
-        foreach (Member m in m_members)
-            if (m.endpoint != null) SendPacket(payload, m.endpoint);
+        SendToOthers(Serializer.PackText(text), null);
     }
 
     void SendText(string text, IPEndPoint to)
     {
-        SendPacket(Encoding.UTF8.GetBytes(text), to);
+        SendPacket(Serializer.PackText(text), to);
     }
 
     void SendPacket(byte[] payload, IPEndPoint to)

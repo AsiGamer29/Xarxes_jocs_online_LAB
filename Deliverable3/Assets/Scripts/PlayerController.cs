@@ -32,6 +32,13 @@ public class PlayerController : MonoBehaviour
     private float dashDirection;
     private float defaultGravity;
 
+    // Read by PlayerNetSync to send this player's state.
+    public bool FacingRight { get { return facingRight; } }
+    public bool IsMoving { get { return Mathf.Abs(moveInput) > 0.01f; } }
+    public bool IsGrounded { get { return isGrounded; } }
+    public bool IsCrouching { get { return isCrouching; } }
+    public bool IsDashing { get { return isDashing; } }
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -61,7 +68,7 @@ public class PlayerController : MonoBehaviour
         moveInput = Input.GetAxisRaw("Horizontal");
         if (isCrouching) moveInput = 0f;
 
-        // Girar el sprite según hacia dónde mire
+        // Girar el sprite segÃºn hacia dÃ³nde mire
         if (moveInput > 0) facingRight = true;
         if (moveInput < 0) facingRight = false;
         sr.flipX = !facingRight;
