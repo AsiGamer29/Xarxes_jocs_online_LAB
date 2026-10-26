@@ -3,44 +3,34 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using UnityEngine;
 
-public class UdpLobbyClient : MonoBehaviour
+// UDP game channel (client side). Created when the game starts, after the TCP lobby gave us a name.
+public class UdpGameClient : MonoBehaviour
 {
     public enum State { Idle, Connecting, Connected, Failed, Closed }
 
     public string serverIp = "127.0.0.1";
     public int port = 9050;
-    public string userName = "Player";
+    public string localName = "";     // the name the server gave us over TCP
 
-    public readonly List<string> Players = new List<string>();
-    public readonly List<string> Events = new List<string>();
     public readonly Dictionary<string, PlayerStateDTO> RemoteStates = new Dictionary<string, PlayerStateDTO>();
-    public int PlayersVersion;
-    public int EventsVersion;
-    public string LastError = "";
-    public bool GameStarted;
-    public string LocalName = "";
     public GameStateDTO GameState;
     public bool HasGameState;
+    public string LastError = "";
     public State Status { get { return m_state; } }
 
     const int MaxPacketSize = 4 * 1024;
-    const int JoinRetryMs = 500;
-    const int JoinTimeoutMs = 5000;
-    const float PingInterval = 1f;
-    const float ServerTimeout = 5f;
+    const int HelloRetryMs = 300;
+    const int HelloTimeoutMs = 8000;
 
     Socket m_connection;
     readonly List<Thread> m_threads = new List<Thread>();
     readonly ConcurrentQueue<byte[]> m_inbox = new ConcurrentQueue<byte[]>();
     volatile bool m_running;
     volatile State m_state = State.Idle;
-    bool m_announcedConnected;
-    float m_lastReceived;
-    float m_lastPing;
+    bool m_loggedFailure;
 
     public void StartNetwork()
     {
@@ -48,13 +38,6 @@ public class UdpLobbyClient : MonoBehaviour
         m_running = true;
         m_state = State.Connecting;
         StartThread(ClientThread);
-    }
-
-    public void SendChat(string text)
-    {
-        if (m_state != State.Connected) return;
-        if (string.IsNullOrWhiteSpace(text)) return;
-        SendString("CHAT:" + text);
     }
 
     public void SendState(PlayerStateDTO state)
@@ -70,12 +53,6 @@ public class UdpLobbyClient : MonoBehaviour
         for (int i = 0; i < 3; i++) SendBytes(packet);
     }
 
-    public void Leave()
-    {
-        SendString("LEAVE:");
-        Disconnect();
-    }
-
     public void Disconnect()
     {
         if (!m_running) return;
@@ -88,61 +65,31 @@ public class UdpLobbyClient : MonoBehaviour
         foreach (Thread t in threads) if (t != Thread.CurrentThread) t.Join(500);
 
         if (m_state == State.Connected || m_state == State.Connecting) m_state = State.Closed;
-        Debug.Log("[CLIENT] Disconnected");
-    }
-
-    void OnApplicationQuit()
-    {
-        if (m_running && m_state == State.Connected) SendString("LEAVE:");
+        Debug.Log("[UDP CLIENT] Disconnected");
     }
 
     void OnDestroy() { Disconnect(); }
 
-
     void Update()
     {
-        float now = Time.realtimeSinceStartup;
-
-        if (!m_announcedConnected && m_state == State.Connected)
-        {
-            m_announcedConnected = true;
-            AddEvent("[CLIENT] Connected with server " + serverIp + ":" + port);
-        }
-
         byte[] data;
-        while (m_inbox.TryDequeue(out data))
-        {
-            m_lastReceived = now;
-            OnPacketReceived(data, now);
-        }
+        while (m_inbox.TryDequeue(out data)) OnPacketReceived(data);
 
-        if (m_state == State.Connected)
+        if (m_state == State.Failed && !m_loggedFailure)
         {
-            if (now - m_lastReceived > ServerTimeout) { OnConnectionClosed(); return; }
-
-            if (now - m_lastPing >= PingInterval)
-            {
-                m_lastPing = now;
-                SendString("PING:");
-            }
+            m_loggedFailure = true;
+            Debug.LogWarning("[UDP CLIENT] " + LastError);
         }
     }
 
-    void OnConnectionClosed()
-    {
-        if (m_state == State.Closed) return;
-        m_state = State.Closed;
-        AddEvent("[CLIENT] Connection with the server was lost.");
-    }
-
-    void OnPacketReceived(byte[] data, float now)
+    void OnPacketReceived(byte[] data)
     {
         if (data.Length == 0) return;
 
         switch ((MsgType)data[0])
         {
             case MsgType.Text:
-                OnTextReceived(Serializer.ReadText(data), now);
+                if (Serializer.ReadText(data).StartsWith("HELLO_OK")) m_state = State.Connected;
                 break;
 
             case MsgType.PlayerState:
@@ -162,60 +109,6 @@ public class UdpLobbyClient : MonoBehaviour
         }
     }
 
-    void OnTextReceived(string text, float now)
-    {
-        int i = text.IndexOf(':');
-        string type = i < 0 ? text : text.Substring(0, i);
-        string content = i < 0 ? "" : text.Substring(i + 1);
-
-        // The lab protocol has no WELCOME: a server answers a JOIN with the player list,
-        // so PLAYERS confirms the join as well.
-        if (m_state == State.Connecting && (type == "WELCOME" || type == "PLAYERS"))
-        {
-            m_lastReceived = now;
-            m_lastPing = now;
-            m_state = State.Connected;
-        }
-
-        switch (type)
-        {
-            case "PLAYERS":
-                List<string> list = new List<string>();
-                foreach (string n in content.Split(','))
-                    if (n.Length > 0) list.Add(n);
-
-                if (!SameList(list, Players))
-                {
-                    Players.Clear();
-                    Players.AddRange(list);
-                    PlayersVersion++;
-                }
-                break;
-
-            case "START":
-                if (GameStarted) break;   // the server repeats it every second
-                LocalName = content;
-                GameStarted = true;
-                break;
-
-            case "CHAT":
-            case "LOG":
-                AddEvent(content);
-                break;
-
-            case "CLOSE":
-                OnConnectionClosed();
-                break;
-        }
-    }
-
-    static bool SameList(List<string> a, List<string> b)
-    {
-        if (a.Count != b.Count) return false;
-        for (int i = 0; i < a.Count; i++) if (a[i] != b[i]) return false;
-        return true;
-    }
-
     void ClientThread()
     {
         Socket socket = null;
@@ -226,19 +119,15 @@ public class UdpLobbyClient : MonoBehaviour
             m_connection = socket;
             socket.Connect(new IPEndPoint(IPAddress.Parse(serverIp), port));
         }
-        catch (SocketException e)
-        {
-            Fail("Unable to connect: " + e.SocketErrorCode);
-            return;
-        }
+        catch (SocketException e) { Fail("Unable to open UDP: " + e.SocketErrorCode); return; }
         catch (FormatException) { Fail("IP not valid"); return; }
         catch (ObjectDisposedException) { return; }
 
-        Debug.Log("[CLIENT] Joining (UDP) " + serverIp + ":" + port);
+        Debug.Log("[UDP CLIENT] Registering with " + serverIp + ":" + port + " as " + localName);
 
-        string joinMessage = "JOIN:" + ServerSession.SanitizeName(userName);
+        byte[] hello = Serializer.PackText("HELLO:" + localName);
         System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
-        long lastJoin = -JoinRetryMs;
+        long lastHello = -HelloRetryMs;
         byte[] buffer = new byte[MaxPacketSize];
 
         while (m_running)
@@ -246,15 +135,11 @@ public class UdpLobbyClient : MonoBehaviour
             if (m_state == State.Connecting)
             {
                 long elapsed = clock.ElapsedMilliseconds;
-                if (elapsed > JoinTimeoutMs)
+                if (elapsed > HelloTimeoutMs) { Fail("The UDP server did not answer (firewall?)"); return; }
+                if (elapsed - lastHello >= HelloRetryMs)
                 {
-                    Fail("Nobody answering in " + serverIp + ":" + port);
-                    return;
-                }
-                if (elapsed - lastJoin >= JoinRetryMs)
-                {
-                    lastJoin = elapsed;
-                    SendString(joinMessage);
+                    lastHello = elapsed;
+                    SendBytes(hello);
                 }
             }
 
@@ -262,11 +147,6 @@ public class UdpLobbyClient : MonoBehaviour
             try { read = socket.Receive(buffer); }
             catch (SocketException e)
             {
-                if (e.SocketErrorCode == SocketError.ConnectionReset && m_state == State.Connecting)
-                {
-                    Fail("Nobody listening in " + serverIp + ":" + port);
-                    return;
-                }
                 if (e.SocketErrorCode == SocketError.TimedOut
                     || e.SocketErrorCode == SocketError.WouldBlock
                     || e.SocketErrorCode == SocketError.ConnectionReset
@@ -291,26 +171,14 @@ public class UdpLobbyClient : MonoBehaviour
         CloseSocket(m_connection);
     }
 
-    void SendString(string text)
-    {
-        SendBytes(Serializer.PackText(text));
-    }
-
     void SendBytes(byte[] packet)
     {
         Socket s = m_connection;
         if (s == null) return;
 
         try { s.Send(packet); }
-        catch (SocketException e) { Debug.Log("[CLIENT] Send failed: " + e.SocketErrorCode); }
+        catch (SocketException e) { Debug.Log("[UDP CLIENT] Send failed: " + e.SocketErrorCode); }
         catch (ObjectDisposedException) { }
-    }
-
-    void AddEvent(string line)
-    {
-        Events.Add(line);
-        if (Events.Count > 200) Events.RemoveAt(0);
-        EventsVersion++;
     }
 
     void StartThread(ThreadStart work)

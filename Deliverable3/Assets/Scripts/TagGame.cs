@@ -47,7 +47,7 @@ public class TagGame : MonoBehaviour
     {
         if (!ServerSession.UdpGame) return;
 
-        if (!ServerSession.IsGameServer && ServerSession.UdpClient.Status != UdpLobbyClient.State.Connected)
+        if (!ServerSession.IsGameServer && (ServerSession.Client == null || ServerSession.Client.Status != LobbyClient.State.Connected))
         {
             LeaveMatch();
             return;
@@ -353,7 +353,7 @@ public class TagGame : MonoBehaviour
 
     void LeaveMatch()
     {
-        if (ServerSession.UdpClient != null) ServerSession.UdpClient.Leave();
+        if (ServerSession.Client != null) ServerSession.Client.Leave();
         ServerSession.Reset();
         SceneManager.LoadScene(ServerSession.SceneMenu);
     }

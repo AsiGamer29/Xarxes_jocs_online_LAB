@@ -18,34 +18,25 @@ public static class ServerSession
 
     public static LobbyServer Server;
     public static LobbyClient Client;
+    public static UdpGameServer UdpServer;
+    public static UdpGameClient UdpClient;
 
-    public enum Protocol { TCP, UDP }
-    public static Protocol SelectedProtocol = Protocol.TCP;
-    public static UdpLobbyServer UdpServer;
-    public static UdpLobbyClient UdpClient;
-
-    // The room as the server sent it (host first), whatever the protocol and role. Null with no session.
     public static List<string> CurrentPlayers
     {
         get
         {
             if (Server != null) return Server.Players;
             if (Client != null) return Client.Players;
-            if (UdpServer != null) return UdpServer.Players;
-            if (UdpClient != null) return UdpClient.Players;
             return null;
         }
     }
 
-    // The name this PC plays with. The server may have changed it (Anna -> Anna2), so it comes from the server.
     public static string LocalPlayerName
     {
         get
         {
             if (Server != null) return Server.LocalName;
             if (Client != null) return Client.LocalName;
-            if (UdpServer != null) return UdpServer.LocalName;
-            if (UdpClient != null) return UdpClient.LocalName;
             return "";
         }
     }
@@ -115,10 +106,10 @@ public static class ServerSession
         return "127.0.0.1";
     }
 
-    // True when the game is running over UDP (movement only goes through UDP for now).
+    // True when the UDP game channel exists (the host always has it, a client gets it when the game starts).
     public static bool UdpGame
     {
-        get { return SelectedProtocol == Protocol.UDP && (UdpServer != null || UdpClient != null); }
+        get { return UdpServer != null || UdpClient != null; }
     }
 
     // The local player's state: the host sends it to every client, a client sends it to the host.
@@ -168,5 +159,20 @@ public static class ServerSession
         if (UdpClient == null || !UdpClient.HasGameState) return false;
         game = UdpClient.GameState;
         return true;
+    }
+
+    // Client only: opens the UDP game channel once the TCP lobby has given us our name (START).
+    public static void StartUdpClient()
+    {
+        if (UdpClient != null || Client == null) return;
+
+        GameObject go = new GameObject("UdpGameClient");
+        Object.DontDestroyOnLoad(go);
+        UdpGameClient udp = go.AddComponent<UdpGameClient>();
+        udp.serverIp = ServerIp;
+        udp.port = Port;
+        udp.localName = Client.LocalName;
+        UdpClient = udp;
+        udp.StartNetwork();
     }
 }
