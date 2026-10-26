@@ -47,6 +47,12 @@ public class TagGame : MonoBehaviour
     {
         if (!ServerSession.UdpGame) return;
 
+        if (!ServerSession.IsGameServer && ServerSession.UdpClient.Status != UdpLobbyClient.State.Connected)
+        {
+            LeaveMatch();
+            return;
+        }
+
         if (ServerSession.IsGameServer) RunRules();
         else
         {
