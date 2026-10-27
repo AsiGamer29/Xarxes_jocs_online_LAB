@@ -18,12 +18,16 @@ public class TagGame : MonoBehaviour
     GameStateDTO m_state;
     int m_shownRound;
 
+    public GameStateDTO State { get { return m_state; } }
+    public bool MatchOver { get { return m_state.phase == GamePhase.MatchOver; } }
+
     // Server only
     float m_phaseEnd;
     float m_immuneUntil;
     float m_nextSend;
     bool m_restartRequested;
     readonly Dictionary<string, int> m_wins = new Dictionary<string, int>();
+
 
     void Awake()
     {
@@ -210,7 +214,7 @@ public class TagGame : MonoBehaviour
         }
     }
 
-    string ScoreLine()
+    public string ScoreLine()
     {
         if (string.IsNullOrEmpty(m_state.scores)) return "";
         List<string> parts = new List<string>();
