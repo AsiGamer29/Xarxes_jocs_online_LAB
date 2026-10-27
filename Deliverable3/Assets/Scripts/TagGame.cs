@@ -8,7 +8,7 @@ public class TagGame : MonoBehaviour
     const float RoundOverTime = 5f;
     const float TagCooldown = 1f;
     const float SendInterval = 0.1f;
-    const int RoundsToWin = 3;
+    const int RoundsToWin = 2;
     public static TagGame Instance;
     string m_touched;
 

@@ -43,6 +43,9 @@ public class GameSpawner : MonoBehaviour
             Spawn(names[i], i, names[i] == localName);
 
         gameObject.AddComponent<TagGame>();
+
+        gameObject.AddComponent<TagGame>();
+        gameObject.AddComponent<TagGameUI>();
     }
 
     // Someone left the room: take their player off the screen.
