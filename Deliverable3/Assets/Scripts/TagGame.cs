@@ -2,20 +2,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-// Pilla-pilla. Added to the GameSpawner object when the game scene starts.
-// The server (host) runs the rules and sends a GameStateDTO 10 times per second; every PC,
-// the host included, shows that state: who "la lleva", the time left and who lost.
-// Rules: a random player has it. Touching another player passes it on, with a short immunity so it
-// cannot bounce straight back. When the time runs out, whoever has it loses, and after a few
-// seconds a new round starts with everybody back at their spawn point.
 public class TagGame : MonoBehaviour
 {
     const float RoundTime = 60f;
-    const float RoundOverTime = 5f;     // how long the result stays on screen
-    const float TagDistance = 1.1f;     // centre to centre, in world units
-    const float TagImmunity = 1.5f;     // after a tag (or a new round) nobody can tag for this long
+    const float RoundOverTime = 5f;
+    const float TagCooldown = 1f;
     const float SendInterval = 0.1f;
-    const int RoundsToWin = 2;
+    const int RoundsToWin = 3;
+    public static TagGame Instance;
+    string m_touched;
 
     static readonly Color TaggedTint = new Color(1f, 0.45f, 0.45f);
     static readonly Color WinColor = new Color(0.4f, 1f, 0.4f);
@@ -36,6 +31,7 @@ public class TagGame : MonoBehaviour
 
     void Awake()
     {
+        Instance = this;
         m_spawner = GetComponent<GameSpawner>();
         m_state.taggedPlayer = "";
         m_state.loser = "";
@@ -71,7 +67,6 @@ public class TagGame : MonoBehaviour
         PaintTagged();
     }
 
-    // ------------------------------------------------------------------------------ server rules
     void RunRules()
     {
         float now = Time.time;
@@ -88,10 +83,13 @@ public class TagGame : MonoBehaviour
 
             case GamePhase.Playing:
                 if (players.Count < 2) { m_state.phase = GamePhase.Waiting; m_state.taggedPlayer = ""; break; }
-                if (!players.Contains(m_state.taggedPlayer)) PassTo(RandomPlayer(players), now);   // it left
+                if (!players.Contains(m_state.taggedPlayer)) PassTo(RandomPlayer(players), now);
                 m_state.timeLeft = Mathf.Max(0f, m_phaseEnd - now);
                 if (m_state.timeLeft <= 0f) EndRound(players, now);
-                else if (now >= m_immuneUntil) TryTag(players, now);
+                else if (m_touched != null && now >= m_immuneUntil && players.Contains(m_touched))
+                {
+                    PassTo(m_touched, now);
+                }
                 break;
 
             case GamePhase.RoundOver:
@@ -113,6 +111,7 @@ public class TagGame : MonoBehaviour
                 break;
         }
 
+        m_touched = null;
         if (now >= m_nextSend)
         {
             m_nextSend = now + SendInterval;
@@ -182,30 +181,12 @@ public class TagGame : MonoBehaviour
         return string.Join(",", parts.ToArray());
     }
 
-    void TryTag(List<string> players, float now)
-    {
-        GameObject tagged;
-        if (!m_spawner.Players.TryGetValue(m_state.taggedPlayer, out tagged)) return;
-
-        foreach (string other in players)
-        {
-            if (other == m_state.taggedPlayer) continue;
-            GameObject target = m_spawner.Players[other];
-            if (Vector2.Distance(tagged.transform.position, target.transform.position) <= TagDistance)
-            {
-                PassTo(other, now);
-                return;
-            }
-        }
-    }
-
     void PassTo(string player, float now)
     {
         m_state.taggedPlayer = player;
-        m_immuneUntil = now + TagImmunity;
+        m_immuneUntil = now + TagCooldown;
     }
 
-    // Still in the room and with a player on screen.
     List<string> PlayersInGame()
     {
         List<string> result = new List<string>();
@@ -221,7 +202,6 @@ public class TagGame : MonoBehaviour
         return players[Random.Range(0, players.Count)];
     }
 
-    // ------------------------------------------------------------------------------ what everybody sees
     void PaintTagged()
     {
         foreach (KeyValuePair<string, GameObject> pair in m_spawner.Players)
@@ -234,7 +214,6 @@ public class TagGame : MonoBehaviour
         }
     }
 
-    // Arranging score
     string ScoreLine()
     {
         if (string.IsNullOrEmpty(m_state.scores)) return "";
@@ -281,18 +260,18 @@ public class TagGame : MonoBehaviour
         {
             case GamePhase.Playing:
                 string who;
-                if (m_state.taggedPlayer == me) who = "YOU are IT! Touch someone!";
-                else who = m_state.taggedPlayer + " is IT!";
+                if (m_state.taggedPlayer == me) who = "Tag someone to free yourself!";
+                else who = m_state.taggedPlayer + " is the bomb!";
                 text = who + "   " + seconds + "s";
                 break;
             case GamePhase.RoundOver:
                 string lost;
-                if (m_state.loser == me) lost = "You lost the round!";
+                if (m_state.loser == me) lost = "YOU LOST!";
                 else lost = m_state.loser + " lost the round!";
                 text = lost + "   Next round in " + seconds + "s";
                 break;
             default:
-                text = "Waiting for at least 2 players";
+                text = "Waiting for at least 2 players...";
                 break;
         }
 
@@ -357,6 +336,14 @@ public class TagGame : MonoBehaviour
         if (ServerSession.Client != null) ServerSession.Client.Leave();
         ServerSession.Reset();
         SceneManager.LoadScene(ServerSession.SceneMenu);
+    }
+
+    public void ReportTouch(string a, string b)
+    {
+        if (!ServerSession.IsGameServer || m_state.phase != GamePhase.Playing) return;
+
+        if (a == m_state.taggedPlayer) m_touched = b;
+        else if (b == m_state.taggedPlayer) m_touched = a;
     }
 
 }

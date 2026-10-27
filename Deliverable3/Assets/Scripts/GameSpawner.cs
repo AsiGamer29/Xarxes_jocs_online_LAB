@@ -104,6 +104,8 @@ public class GameSpawner : MonoBehaviour
         if (body != null)
         {
             body.bodyType = RigidbodyType2D.Kinematic;
+            body.useFullKinematicContacts = true; // Sin esto puede que falle por como funciona la dinamica entre kinematics
+            body.sleepMode = RigidbodySleepMode2D.NeverSleep;
             body.linearVelocity = Vector2.zero;
         }
     }

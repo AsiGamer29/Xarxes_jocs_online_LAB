@@ -33,6 +33,7 @@ public class PlayerNetSync : MonoBehaviour
     }
 
     public bool IsLocal { get { return m_isLocal; } }
+    public string PlayerName { get { return m_name; } }
 
     void Update()
     {
