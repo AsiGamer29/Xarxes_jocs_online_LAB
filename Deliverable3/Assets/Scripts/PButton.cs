@@ -13,7 +13,11 @@ public class PButton : MonoBehaviour
 
     public int buttonId;
 
+    public enum ButtonColor { Red, Blue }
+    public ButtonColor buttonColor;
+
     public Tilemap platformTilemap;
+    public Tilemap unpressedTilemap;
 
     public UnityEvent onPressed;
 
@@ -33,6 +37,7 @@ public class PButton : MonoBehaviour
         defaultColliderSize = col.size;
         defaultColliderOffset = col.offset;
         if (platformTilemap != null) platformTilemap.gameObject.SetActive(false);
+        if (unpressedTilemap != null) unpressedTilemap.gameObject.SetActive(true);
         All[buttonId] = this;
     }
 
@@ -78,6 +83,13 @@ public class PButton : MonoBehaviour
         col.offset = defaultColliderOffset;
 
         if (platformTilemap != null) platformTilemap.gameObject.SetActive(false);
+        if (unpressedTilemap != null) unpressedTilemap.gameObject.SetActive(true);
+    }
+
+    void UnpressOtherColor()
+    {
+        foreach (PButton b in All.Values)
+            if (b.buttonColor != buttonColor) b.ResetButton();
     }
 
     void Press()
@@ -89,7 +101,10 @@ public class PButton : MonoBehaviour
         col.size = pressedColliderSize;
         col.offset = pressedColliderOffset;
 
+        if (unpressedTilemap != null) unpressedTilemap.gameObject.SetActive(false);
         if (platformTilemap != null) platformTilemap.gameObject.SetActive(true);
+
+        UnpressOtherColor();
 
         onPressed?.Invoke();
     }
