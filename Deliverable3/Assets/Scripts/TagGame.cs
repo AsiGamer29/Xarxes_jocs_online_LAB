@@ -13,14 +13,10 @@ public class TagGame : MonoBehaviour
     string m_touched;
 
     static readonly Color TaggedTint = new Color(1f, 0.45f, 0.45f);
-    static readonly Color WinColor = new Color(0.4f, 1f, 0.4f);
-    static readonly Color LoseColor = new Color(1f, 0.35f, 0.35f);
 
     GameSpawner m_spawner;
     GameStateDTO m_state;
     int m_shownRound;
-    GUIStyle m_style;
-    GUIStyle m_bigStyle;
 
     // Server only
     float m_phaseEnd;
@@ -56,7 +52,7 @@ public class TagGame : MonoBehaviour
             if (ServerSession.TryGetGameState(out received)) m_state = received;
         }
 
-        // A new round: every PC puts its own player back at its spawn point.
+        // Every PC puts its own player back at its spawn point.
         if (m_state.round != m_shownRound)
         {
             m_shownRound = m_state.round;
@@ -226,7 +222,7 @@ public class TagGame : MonoBehaviour
         return string.Join("  -  ", parts.ToArray());
     }
 
-    bool IsWinner(string name)
+    public bool IsWinner(string name)
     {
         if (string.IsNullOrEmpty(m_state.winners)) return false;
         foreach (string w in m_state.winners.Split(','))
@@ -234,101 +230,14 @@ public class TagGame : MonoBehaviour
         return false;
     }
 
-    void OnGUI()
+    public void OnPlayAgainClicked()
     {
-        if (!ServerSession.UdpGame) return;
-
-        if (m_style == null)
-        {
-            m_style = new GUIStyle(GUI.skin.label) { fontSize = 28, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-            m_style.normal.textColor = Color.white;
-            m_bigStyle = new GUIStyle(m_style) { fontSize = 96 };
-        }
-
-        string me = ServerSession.LocalPlayerName;
-
-        if (m_state.phase == GamePhase.MatchOver)
-        {
-            DrawMatchOver(me);
-            return;
-        }
-
-        int seconds = Mathf.CeilToInt(m_state.timeLeft);
-        string text;
-
-        switch (m_state.phase)
-        {
-            case GamePhase.Playing:
-                string who;
-                if (m_state.taggedPlayer == me) who = "Tag someone to free yourself!";
-                else who = m_state.taggedPlayer + " is the bomb!";
-                text = who + "   " + seconds + "s";
-                break;
-            case GamePhase.RoundOver:
-                string lost;
-                if (m_state.loser == me) lost = "YOU LOST!";
-                else lost = m_state.loser + " lost the round!";
-                text = lost + "   Next round in " + seconds + "s";
-                break;
-            default:
-                text = "Waiting for at least 2 players...";
-                break;
-        }
-
-        float bottom = DrawBox(text, 8f);
-
-        string score = ScoreLine();
-        if (score.Length > 0) DrawBox(score, bottom + 6f);
+        if (ServerSession.IsGameServer) m_restartRequested = true;
     }
 
-    float DrawBox(string text, float y)
+    public void OnBackToMenuClicked()
     {
-        Vector2 size = m_style.CalcSize(new GUIContent(text));
-        Rect box = new Rect((Screen.width - size.x) / 2f - 16f, y, size.x + 32f, size.y + 10f);
-        GUI.Box(box, GUIContent.none);
-        GUI.Box(box, GUIContent.none);
-        GUI.Label(box, text, m_style);
-        return box.yMax;
-    }
-
-    void DrawMatchOver(string me)
-    {
-        bool won = IsWinner(me);
-
-        GUI.color = new Color(0f, 0f, 0f, 0.8f);
-        GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
-        GUI.color = Color.white;
-
-        float cx = Screen.width / 2f;
-        float top = Screen.height * 0.2f;
-
-        string title;
-        if (won)
-        {
-            title = "VICTORY!";
-            m_bigStyle.normal.textColor = WinColor;
-        }
-        else
-        {
-            title = "DEFEAT";
-            m_bigStyle.normal.textColor = LoseColor;
-        }
-        GUI.Label(new Rect(0f, top, Screen.width, 120f), title, m_bigStyle);
-        GUI.Label(new Rect(0f, top + 120f, Screen.width, 50f), ScoreLine(), m_style);
-
-        float y = top + 200f;
-        if (ServerSession.IsGameServer)
-        {
-            if (GUI.Button(new Rect(cx - 120f, y, 240f, 50f), "Play again")) m_restartRequested = true;
-            y += 65f;
-        }
-        else
-        {
-            GUI.Label(new Rect(0f, y, Screen.width, 40f), "Waiting for the host...", m_style);
-            y += 65f;
-        }
-
-        if (GUI.Button(new Rect(cx - 120f, y, 240f, 50f), "Back to menu")) LeaveMatch();
+        LeaveMatch();
     }
 
     void LeaveMatch()
@@ -345,5 +254,4 @@ public class TagGame : MonoBehaviour
         if (a == m_state.taggedPlayer) m_touched = b;
         else if (b == m_state.taggedPlayer) m_touched = a;
     }
-
 }
