@@ -191,6 +191,13 @@ public class LobbyServer : MonoBehaviour
                 HandleChat(member.name, content);
                 break;
 
+            case "BUTTON":
+                int buttonId;
+                if (member == null || !int.TryParse(content, out buttonId)) return;
+                PButton.PressFromNetwork(buttonId);
+                Broadcast("BUTTON:" + buttonId);
+                break;
+
             case "LEAVE":
                 RemoveMember(from);
                 CloseSocket(from);
@@ -237,6 +244,12 @@ public class LobbyServer : MonoBehaviour
     {
         if (m_state != State.Running || m_members.Count == 0) return;
         HandleChat(m_members[0].name, text);
+    }
+
+    public void SendHostButton(int id)
+    {
+        if (m_state != State.Running) return;
+        Broadcast("BUTTON:" + id);
     }
 
     void HandleChat(string senderName, string raw)

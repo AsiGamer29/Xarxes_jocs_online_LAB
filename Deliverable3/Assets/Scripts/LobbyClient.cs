@@ -46,6 +46,12 @@ public class LobbyClient : MonoBehaviour
         if (string.IsNullOrWhiteSpace(text)) return;
         SendString("CHAT:" + text);
     }
+    public void SendButton(int id)
+    {
+        if (m_state != State.Connected) return;
+        SendString("BUTTON:" + id);
+    }
+
     public void Leave()
     {
         SendString("LEAVE:");
@@ -112,6 +118,11 @@ public class LobbyClient : MonoBehaviour
             case "START":
                 LocalName = content;
                 GameStarted = true;
+                break;
+
+            case "BUTTON":
+                int buttonId;
+                if (int.TryParse(content, out buttonId)) PButton.PressFromNetwork(buttonId);
                 break;
 
             case "CHAT":

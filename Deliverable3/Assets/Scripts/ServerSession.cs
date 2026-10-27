@@ -143,9 +143,8 @@ public static class ServerSession
 
     public static void SendButtonPress(int id)
     {
-        if (!UdpGame) return;
-        if (UdpServer != null) UdpServer.SendButtonPress(id);
-        else if (UdpClient != null) UdpClient.SendButtonPress(id);
+        if (Server != null) Server.SendHostButton(id);
+        else if (Client != null) Client.SendButton(id);
     }
 
     public static void SendGameState(GameStateDTO game)
