@@ -65,6 +65,7 @@ public class TagGame : MonoBehaviour
         {
             m_shownRound = m_state.round;
             m_spawner.RespawnLocal();
+            PButton.ResetAll();
         }
 
         PaintTagged();

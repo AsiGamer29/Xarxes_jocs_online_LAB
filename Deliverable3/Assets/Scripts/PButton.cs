@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Tilemaps;
 
 public class PButton : MonoBehaviour
 {
@@ -12,11 +13,15 @@ public class PButton : MonoBehaviour
 
     public int buttonId;
 
+    public Tilemap platformTilemap;
+
     public UnityEvent onPressed;
 
     private SpriteRenderer sr;
     private BoxCollider2D col;
     private bool isPressed = false;
+    private Vector2 defaultColliderSize;
+    private Vector2 defaultColliderOffset;
 
     static readonly System.Collections.Generic.Dictionary<int, PButton> All = new System.Collections.Generic.Dictionary<int, PButton>();
 
@@ -25,6 +30,9 @@ public class PButton : MonoBehaviour
         sr = GetComponent<SpriteRenderer>();
         col = GetComponent<BoxCollider2D>();
         sr.sprite = unpressedSprite;
+        defaultColliderSize = col.size;
+        defaultColliderOffset = col.offset;
+        if (platformTilemap != null) platformTilemap.gameObject.SetActive(false);
         All[buttonId] = this;
     }
 
@@ -56,6 +64,22 @@ public class PButton : MonoBehaviour
         if (All.TryGetValue(id, out b)) b.Press();
     }
 
+    public static void ResetAll()
+    {
+        foreach (PButton b in All.Values) b.ResetButton();
+    }
+
+    void ResetButton()
+    {
+        isPressed = false;
+        sr.sprite = unpressedSprite;
+
+        col.size = defaultColliderSize;
+        col.offset = defaultColliderOffset;
+
+        if (platformTilemap != null) platformTilemap.gameObject.SetActive(false);
+    }
+
     void Press()
     {
         if (isPressed) return;
@@ -64,6 +88,8 @@ public class PButton : MonoBehaviour
 
         col.size = pressedColliderSize;
         col.offset = pressedColliderOffset;
+
+        if (platformTilemap != null) platformTilemap.gameObject.SetActive(true);
 
         onPressed?.Invoke();
     }
