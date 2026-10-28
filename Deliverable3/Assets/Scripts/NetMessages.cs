@@ -1,14 +1,12 @@
 using System;
 
-// The first byte of every UDP packet says what follows (Lab 3, slide 18).
-// Lobby and chat stay as text; everything about the game travels in binary through Serializer.
+// The first byte of every UDP packet says what follows.
+// Lobby, chat and buttons go through TCP as text; the game itself goes through UDP in binary.
 public enum MsgType : byte
 {
-    Text = 1,         // lobby and chat, as before: JOIN:Anna, CHAT:hello...
-    Player = 2,       // a PlayerDTO2 (Lab 3)
-    PlayerState = 3,  // where a player is and what it is doing, about 20 times per second
-    GameState = 4,    // the tag round, decided by the server, about 10 times per second
-    ButtonPress = 5,
+    Text = 1,         // only the UDP handshake: HELLO / HELLO_OK
+    PlayerState = 2,  // where a player is and what it is doing, about 20 times per second
+    GameState = 3,    // the tag round, decided by the host, about 10 times per second
 }
 
 // What a player is doing right now. We send the state (not the input): every PC moves its own
@@ -25,12 +23,6 @@ public struct PlayerStateDTO
     public bool grounded;
     public bool crouching;
     public bool dashing;
-}
-
-[Serializable]
-public struct ButtonPressDTO
-{
-    public int buttonId;
 }
 
 public enum GamePhase : byte { Waiting = 0, Playing = 1, RoundOver = 2, MatchOver = 3 }

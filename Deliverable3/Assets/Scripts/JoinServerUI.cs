@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Net;
 using TMPro;
 using UnityEngine;
@@ -35,7 +34,7 @@ public class JoinServerUI : MonoBehaviour
         portField.text = ServerSession.Port.ToString();
 
         SetBusy(false);
-        ShowStatus("", false);
+        ShowStatus("");
     }
 
     public void OnJoinClicked()
@@ -45,7 +44,7 @@ public class JoinServerUI : MonoBehaviour
         int port;
         if (!int.TryParse(portField.text, out port) || port < 1 || port > 65535)
         {
-            ShowStatus("", true);
+            ShowStatus("Invalid port");
             return;
         }
 
@@ -53,7 +52,7 @@ public class JoinServerUI : MonoBehaviour
         IPAddress parsed;
         if (!IPAddress.TryParse(ip, out parsed))
         {
-            ShowStatus("IP not valid, please try another one", true);
+            ShowStatus("IP not valid, please try another one");
             return;
         }
 
@@ -72,14 +71,14 @@ public class JoinServerUI : MonoBehaviour
 
         client.StartNetwork();
         SetBusy(true);
-        ShowStatus("Connecting, please wait...", false);
+        ShowStatus("Connecting, please wait...");
     }
 
     public void OnCancelClicked()
     {
         ServerSession.Reset();           
         SetBusy(false);
-        ShowStatus("", false);
+        ShowStatus("");
     }
 
     public void OnBackClicked()
@@ -101,7 +100,7 @@ public class JoinServerUI : MonoBehaviour
         }
         else if (st == LobbyClient.State.Failed)
         {
-            ShowStatus(ServerSession.Client.LastError, true);
+            ShowStatus(ServerSession.Client.LastError);
             ServerSession.Reset();
             SetBusy(false);
         }
@@ -117,7 +116,7 @@ public class JoinServerUI : MonoBehaviour
         cancelButton.gameObject.SetActive(busy);   
     }
 
-    void ShowStatus(string message, bool isError)
+    void ShowStatus(string message)
     {
         statusText.text = message;
     }

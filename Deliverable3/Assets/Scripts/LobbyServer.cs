@@ -7,6 +7,9 @@ using System.Text;
 using System.Threading;
 using UnityEngine;
 
+// TCP lobby, host side: player list, chat, START and buttons. Everything that must arrive.
+// One thread accepts connections and one thread per client receives; the main thread (Update)
+// handles the messages. Every message is [4 bytes length][UTF-8 text].
 public class LobbyServer : MonoBehaviour
 {
     public enum State { Idle, Starting, Running, Failed, Stopped }
@@ -34,7 +37,6 @@ public class LobbyServer : MonoBehaviour
     volatile State m_state = State.Idle;
     bool m_gameStarted;
 
-    public int ClientCount { get { return Math.Max(0, Players.Count - 1); } }
     public bool GameStarted { get { return m_gameStarted; } }
     public string LocalName { get { return m_members.Count > 0 ? m_members[0].name : ""; } }
 
@@ -221,8 +223,9 @@ public class LobbyServer : MonoBehaviour
 
         m_members.Remove(m);
         BroadcastPlayers();
-        Announce("[PLAYER]" + m.name + " left the lobby");
+        Announce("[PLAYER] " + m.name + " left the lobby");
     }
+
     void Announce(string line)
     {
         AddEvent(line);

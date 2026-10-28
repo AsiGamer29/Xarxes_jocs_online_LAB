@@ -6,8 +6,8 @@ using System.Net.Sockets;
 using System.Threading;
 using UnityEngine;
 
-// UDP game channel (host side). Lobby, chat and START travel through TCP (LobbyServer).
-// This one only carries what has to be fast: player states, game state and button presses.
+// UDP game channel, host side. Lobby, chat, START and buttons go through TCP (LobbyServer).
+// This one only carries what is sent many times per second: player states and the game state.
 public class UdpGameServer : MonoBehaviour
 {
     public enum State { Idle, Starting, Running, Failed, Stopped }
@@ -152,16 +152,6 @@ public class UdpGameServer : MonoBehaviour
                         SendToOthers(Serializer.Pack(MsgType.PlayerState, Serializer.Serialize(state)), peer);
                     break;
                 }
-
-            case MsgType.ButtonPress:
-                {
-                    Peer peer = FindPeer(from);
-                    ButtonPressDTO press;
-                    if (peer == null || !Serializer.TryDeserialize(data, 1, out press)) return;
-                    PButton.PressFromNetwork(press.buttonId);
-                    SendToOthers(Serializer.Pack(MsgType.ButtonPress, Serializer.Serialize(press)), peer);
-                    break;
-                }
         }
     }
 
@@ -201,13 +191,6 @@ public class UdpGameServer : MonoBehaviour
     {
         if (m_state != State.Running) return;
         SendToOthers(Serializer.Pack(MsgType.GameState, Serializer.Serialize(game)), null);
-    }
-
-    public void SendButtonPress(int id)
-    {
-        if (m_state != State.Running) return;
-        byte[] packet = Serializer.Pack(MsgType.ButtonPress, Serializer.Serialize(new ButtonPressDTO { buttonId = id }));
-        for (int i = 0; i < 3; i++) SendToOthers(packet, null);
     }
 
     // Every client except 'skip' (the one who sent it). null = all of them.

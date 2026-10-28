@@ -3,6 +3,8 @@ using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
 
+// Everything about the current session that has to survive scene changes: who we are, the network
+// objects (TCP lobby + UDP game, as server or client) and small helpers the scenes use.
 public static class ServerSession
 {
     public const string SceneMenu = "MainMenu";

@@ -4,8 +4,8 @@ using UnityEngine;
 
 // Spawns one Player per lobby member when the game scene loads, in the order the server sent the
 // list, so every PC puts each player in the same place.
-// The player of this PC is moved with the keyboard. The others will be moved by the network, so
-// their input and physics are switched off.
+// The player of this PC is moved with the keyboard. The others are moved by the network, so
+// their input is off and their body is kinematic.
 public class GameSpawner : MonoBehaviour
 {
     [SerializeField] GameObject playerPrefab;
@@ -41,8 +41,6 @@ public class GameSpawner : MonoBehaviour
         List<string> names = new List<string>(players);
         for (int i = 0; i < names.Count; i++)
             Spawn(names[i], i, names[i] == localName);
-
-        gameObject.AddComponent<TagGame>();
 
         gameObject.AddComponent<TagGame>();
         gameObject.AddComponent<TagGameUI>();
@@ -87,7 +85,7 @@ public class GameSpawner : MonoBehaviour
         PlayerNetSync sync = player.AddComponent<PlayerNetSync>();
         sync.Init(playerName, isLocal);
 
-        SetNameTag(player, playerName, isLocal);
+        SetNameTag(player, playerName);
         m_players[playerName] = player;
 
         if (isLocal)
@@ -107,20 +105,16 @@ public class GameSpawner : MonoBehaviour
         if (body != null)
         {
             body.bodyType = RigidbodyType2D.Kinematic;
-            body.useFullKinematicContacts = true; // Sin esto puede que falle por como funciona la dinamica entre kinematics
+            body.useFullKinematicContacts = true;   // two kinematic bodies only touch each other with this on
             body.sleepMode = RigidbodySleepMode2D.NeverSleep;
             body.linearVelocity = Vector2.zero;
         }
     }
 
-    void SetNameTag(GameObject player, string playerName, bool isLocal)
+    static void SetNameTag(GameObject player, string playerName)
     {
         Transform tagTransform = player.transform.Find("NameTag");
         if (tagTransform == null) return;
-
-        TMP_Text tag = tagTransform.GetComponent<TMP_Text>();
-        tag.text = playerName;
-
+        tagTransform.GetComponent<TMP_Text>().text = playerName;
     }
-
 }

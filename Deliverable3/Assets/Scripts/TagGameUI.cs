@@ -4,6 +4,8 @@ using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+// In-game HUD (who has it, time, score) and the victory / defeat screen. Built from code when the
+// game scene starts, and filled every frame from TagGame.State.
 public class TagGameUI : MonoBehaviour
 {
     static readonly Color WinColor = new Color(0.4f, 1f, 0.4f);
@@ -36,7 +38,7 @@ public class TagGameUI : MonoBehaviour
         scaler.matchWidthOrHeight = 0.5f;
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        if (FindFirstObjectByType<EventSystem>() == null)
+        if (FindAnyObjectByType<EventSystem>() == null)
             new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
 
         // HUD

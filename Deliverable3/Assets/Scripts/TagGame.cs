@@ -2,6 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+// Rules of the tag game. Only the host runs them (RunRules) and sends the result 10 times per second
+// as a GameStateDTO; clients just show the last state they received.
+// A round lasts 60 s; whoever has it when time runs out loses, the rest score a point.
 public class TagGame : MonoBehaviour
 {
     const float RoundTime = 60f;

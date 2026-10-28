@@ -1,6 +1,10 @@
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.Tilemaps;
+
+// A floor button. Red and blue buttons switch each other: pressing one shows its platform, hides
+// its blocks and releases the buttons of the other colour. Only the local player can press a
+// button on each PC; the press then travels through TCP so every PC sees it.
 
 public class PButton : MonoBehaviour
 {
@@ -19,15 +23,13 @@ public class PButton : MonoBehaviour
     public Tilemap platformTilemap;
     public Tilemap unpressedTilemap;
 
-    public UnityEvent onPressed;
-
     private SpriteRenderer sr;
     private BoxCollider2D col;
     private bool isPressed = false;
     private Vector2 defaultColliderSize;
     private Vector2 defaultColliderOffset;
 
-    static readonly System.Collections.Generic.Dictionary<int, PButton> All = new System.Collections.Generic.Dictionary<int, PButton>();
+    static readonly Dictionary<int, PButton> All = new Dictionary<int, PButton>();
 
     void Awake()
     {
@@ -106,6 +108,5 @@ public class PButton : MonoBehaviour
 
         UnpressOtherColor();
 
-        onPressed?.Invoke();
     }
 }

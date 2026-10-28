@@ -1,5 +1,7 @@
 using UnityEngine;
 
+// Trigger circle on every player. When two of them overlap it tells TagGame, which only acts on the
+// host: the host is the one who decides who has it.
 public class TagTrigger : MonoBehaviour
 {
     PlayerNetSync m_player;

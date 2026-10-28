@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using UnityEngine;
 
+// TCP lobby, client side. Connects, sends JOIN:<name> and keeps the room the server sends us.
 public class LobbyClient : MonoBehaviour
 {
     public enum State { Idle, Connecting, Connected, Failed, Closed }

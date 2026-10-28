@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -34,7 +33,7 @@ public class CreateServerUI : MonoBehaviour
         ipField.readOnly = true;
         ipField.text = ServerSession.GetLocalIP();
 
-        ShowStatus("", false);
+        ShowStatus("");
     }
 
     public void OnCreateClicked()
@@ -44,7 +43,7 @@ public class CreateServerUI : MonoBehaviour
         int port;
         if (!int.TryParse(portField.text, out port) || port < 1 || port > 65535)
         {
-            ShowStatus("Unvalid port", true);
+            ShowStatus("Invalid port");
             return;
         }
 
@@ -70,7 +69,7 @@ public class CreateServerUI : MonoBehaviour
         server.StartNetwork();
         udpServer.StartNetwork();
         SetBusy(true);
-        ShowStatus("Creating server, please wait...", false);
+        ShowStatus("Creating server, please wait...");
     }
 
     public void OnBackClicked()
@@ -95,7 +94,7 @@ public class CreateServerUI : MonoBehaviour
         {
             string error = tcp == LobbyServer.State.Failed ? ServerSession.Server.LastError
                                                            : ServerSession.UdpServer.LastError;
-            ShowStatus(error, true);
+            ShowStatus(error);
             ServerSession.Reset();
             SetBusy(false);
         }
@@ -110,7 +109,7 @@ public class CreateServerUI : MonoBehaviour
         portField.interactable = !busy;
     }
 
-    void ShowStatus(string message, bool isError)
+    void ShowStatus(string message)
     {
         statusText.text = message;
     }

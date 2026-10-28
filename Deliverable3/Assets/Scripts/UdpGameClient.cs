@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using System.Threading;
 using UnityEngine;
 
-// UDP game channel (client side). Created when the game starts, after the TCP lobby gave us a name.
+// UDP game channel, client side. Created when the game starts, once TCP has told us our name.
 public class UdpGameClient : MonoBehaviour
 {
     public enum State { Idle, Connecting, Connected, Failed, Closed }
@@ -19,7 +19,6 @@ public class UdpGameClient : MonoBehaviour
     public GameStateDTO GameState;
     public bool HasGameState;
     public string LastError = "";
-    public State Status { get { return m_state; } }
 
     const int MaxPacketSize = 4 * 1024;
     const int HelloRetryMs = 300;
@@ -44,13 +43,6 @@ public class UdpGameClient : MonoBehaviour
     {
         if (m_state != State.Connected) return;
         SendBytes(Serializer.Pack(MsgType.PlayerState, Serializer.Serialize(state)));
-    }
-
-    public void SendButtonPress(int id)
-    {
-        if (m_state != State.Connected) return;
-        byte[] packet = Serializer.Pack(MsgType.ButtonPress, Serializer.Serialize(new ButtonPressDTO { buttonId = id }));
-        for (int i = 0; i < 3; i++) SendBytes(packet);
     }
 
     public void Disconnect()
@@ -102,10 +94,6 @@ public class UdpGameClient : MonoBehaviour
                 if (Serializer.TryDeserialize(data, 1, out game)) { GameState = game; HasGameState = true; }
                 break;
 
-            case MsgType.ButtonPress:
-                ButtonPressDTO press;
-                if (Serializer.TryDeserialize(data, 1, out press)) PButton.PressFromNetwork(press.buttonId);
-                break;
         }
     }
 
