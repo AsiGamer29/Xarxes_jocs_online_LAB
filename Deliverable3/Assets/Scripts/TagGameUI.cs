@@ -16,6 +16,7 @@ public class TagGameUI : MonoBehaviour
     TMP_Text m_title;
     TMP_Text m_finalScore;
     TMP_Text m_waiting;
+    GameObject m_hudBar;
     GameObject m_panel;
     GameObject m_playAgain;
 
@@ -41,11 +42,23 @@ public class TagGameUI : MonoBehaviour
         if (FindAnyObjectByType<EventSystem>() == null)
             new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
 
-        // HUD
-        m_status = NewText("StatusText", canvasGo.transform, 44, TextAlignmentOptions.Center,
-                           new Vector2(0.5f, 1f), new Vector2(0f, -50f), new Vector2(1400f, 80f));
-        m_score = NewText("ScoreText", canvasGo.transform, 32, TextAlignmentOptions.Center,
-                          new Vector2(0.5f, 1f), new Vector2(0f, -115f), new Vector2(1400f, 60f));
+        // HUD: a dark bar across the top so the white text is readable over any part of the map
+        RectTransform barRt = NewRect("HUDBar", canvasGo.transform);
+        barRt.anchorMin = new Vector2(0f, 1f);
+        barRt.anchorMax = new Vector2(1f, 1f);
+        barRt.pivot = new Vector2(0.5f, 1f);
+        barRt.anchoredPosition = Vector2.zero;
+        barRt.sizeDelta = new Vector2(0f, 150f);
+        Image barImage = barRt.gameObject.AddComponent<Image>();
+        barImage.color = new Color(0f, 0f, 0f, 0.7f);
+        barImage.raycastTarget = false;
+        m_hudBar = barRt.gameObject;
+
+        m_status = NewText("StatusText", m_hudBar.transform, 52, TextAlignmentOptions.Center,
+                           new Vector2(0.5f, 1f), new Vector2(0f, -45f), new Vector2(1800f, 70f));
+        m_status.fontStyle = FontStyles.Bold;
+        m_score = NewText("ScoreText", m_hudBar.transform, 38, TextAlignmentOptions.Center,
+                          new Vector2(0.5f, 1f), new Vector2(0f, -110f), new Vector2(1800f, 55f));
 
         RectTransform panelRt = NewRect("MatchOverPanel", canvasGo.transform);
         panelRt.anchorMin = Vector2.zero;
@@ -71,8 +84,7 @@ public class TagGameUI : MonoBehaviour
         NewButton("Back to menu", m_panel.transform, new Vector2(0f, -160f), OnBack);
 
         m_panel.SetActive(false);
-        m_status.gameObject.SetActive(false);
-        m_score.gameObject.SetActive(false);
+        m_hudBar.SetActive(false);
     }
 
     void OnPlayAgain() { if (TagGame.Instance != null) TagGame.Instance.OnPlayAgainClicked(); }
@@ -85,8 +97,7 @@ public class TagGameUI : MonoBehaviour
         TagGame game = TagGame.Instance;
         if (game == null || !ServerSession.UdpGame)
         {
-            SetActive(m_status.gameObject, false);
-            SetActive(m_score.gameObject, false);
+            SetActive(m_hudBar, false);
             SetActive(m_panel, false);
             return;
         }
@@ -97,8 +108,8 @@ public class TagGameUI : MonoBehaviour
         string score = game.ScoreLine();
 
         SetActive(m_panel, matchOver);
-        SetActive(m_status.gameObject, !matchOver);
-        SetActive(m_score.gameObject, !matchOver && score.Length > 0);
+        SetActive(m_hudBar, !matchOver);
+        SetActive(m_score.gameObject, score.Length > 0);
 
         if (matchOver)
         {
