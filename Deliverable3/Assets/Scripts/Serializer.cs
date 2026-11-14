@@ -1,39 +1,23 @@
 using System;
 using System.IO;
-using System.Text;
 
-// Turns the game messages into bytes and back (BinaryWriter / BinaryReader, Lab 3).
-// Every UDP packet is [1 byte MsgType][payload]: the first byte says how to read the rest.
+// Turns the UDP messages into bytes and back (BinaryWriter / BinaryReader, Lab 3).
+// Every packet is [1 byte MsgType][payload]: the first byte says how to read the rest.
+// Each TryRead reads in the same order its Write wrote, and returns false for a broken packet
+// instead of throwing.
 public static class Serializer
 {
-    public static byte[] Pack(MsgType type, byte[] payload)
-    {
-        byte[] packet = new byte[1 + payload.Length];
-        packet[0] = (byte)type;
-        Buffer.BlockCopy(payload, 0, packet, 1, payload.Length);
-        return packet;
-    }
+    const int MaxPlayers = 64;   // a Welcome with more is garbage
 
-    public static byte[] PackText(string text)
-    {
-        return Pack(MsgType.Text, Encoding.UTF8.GetBytes(text));
-    }
-
-    public static string ReadText(byte[] packet)
-    {
-        return Encoding.UTF8.GetString(packet, 1, packet.Length - 1);
-    }
-
+    // ---------------------------------------------------------------------------- player state ---
     // The five bools go in one byte: bit 0 facingRight, 1 moving, 2 grounded, 3 crouching, 4 dashing.
-    public static byte[] Serialize(PlayerStateDTO dto)
+    public static byte[] Write(PlayerStateDTO dto)
     {
-        MemoryStream stream = new MemoryStream();
-        BinaryWriter writer = new BinaryWriter(stream);
-
-        writer.Write(dto.sequence);
-        writer.Write(dto.playerName ?? "");
-        writer.Write(dto.x);
-        writer.Write(dto.y);
+        BinaryWriter w = Start(MsgType.PlayerState);
+        w.Write(dto.sequence);
+        w.Write(dto.objectId);
+        w.Write(dto.x);
+        w.Write(dto.y);
 
         byte flags = 0;
         if (dto.facingRight) flags |= 1;
@@ -41,24 +25,22 @@ public static class Serializer
         if (dto.grounded) flags |= 4;
         if (dto.crouching) flags |= 8;
         if (dto.dashing) flags |= 16;
-        writer.Write(flags);
-
-        return stream.ToArray();
+        w.Write(flags);
+        return Finish(w);
     }
 
-    // Reads in the same order it was written. Returns false for a broken packet instead of throwing.
-    public static bool TryDeserialize(byte[] data, int offset, out PlayerStateDTO dto)
+    public static bool TryRead(byte[] packet, out PlayerStateDTO dto)
     {
         dto = new PlayerStateDTO();
         try
         {
-            BinaryReader reader = new BinaryReader(new MemoryStream(data, offset, data.Length - offset));
-            dto.sequence = reader.ReadUInt32();
-            dto.playerName = reader.ReadString();
-            dto.x = reader.ReadSingle();
-            dto.y = reader.ReadSingle();
+            BinaryReader r = Reader(packet);
+            dto.sequence = r.ReadUInt32();
+            dto.objectId = r.ReadInt32();
+            dto.x = r.ReadSingle();
+            dto.y = r.ReadSingle();
 
-            byte flags = reader.ReadByte();
+            byte flags = r.ReadByte();
             dto.facingRight = (flags & 1) != 0;
             dto.moving = (flags & 2) != 0;
             dto.grounded = (flags & 4) != 0;
@@ -66,40 +48,183 @@ public static class Serializer
             dto.dashing = (flags & 16) != 0;
             return true;
         }
-        catch (IOException) { return false; }
+        catch (Exception) { return false; }
     }
 
-    public static byte[] Serialize(GameStateDTO dto)
+    // ------------------------------------------------------------------------------ game state ---
+    public static byte[] Write(GameStateDTO dto)
     {
-        MemoryStream stream = new MemoryStream();
-        BinaryWriter writer = new BinaryWriter(stream);
-
-        writer.Write(dto.round);
-        writer.Write((byte)dto.phase);
-        writer.Write(dto.taggedPlayer ?? "");
-        writer.Write(dto.timeLeft);
-        writer.Write(dto.loser ?? "");
-        writer.Write(dto.scores ?? "");
-        writer.Write(dto.winners ?? "");
-
-        return stream.ToArray();
+        BinaryWriter w = Start(MsgType.GameState);
+        w.Write(dto.round);
+        w.Write((byte)dto.phase);
+        w.Write(dto.taggedPlayer ?? "");
+        w.Write(dto.timeLeft);
+        w.Write(dto.loser ?? "");
+        w.Write(dto.scores ?? "");
+        w.Write(dto.winners ?? "");
+        return Finish(w);
     }
 
-    public static bool TryDeserialize(byte[] data, int offset, out GameStateDTO dto)
+    public static bool TryRead(byte[] packet, out GameStateDTO dto)
     {
         dto = new GameStateDTO();
         try
         {
-            BinaryReader reader = new BinaryReader(new MemoryStream(data, offset, data.Length - offset));
-            dto.round = reader.ReadInt32();
-            dto.phase = (GamePhase)reader.ReadByte();
-            dto.taggedPlayer = reader.ReadString();
-            dto.timeLeft = reader.ReadSingle();
-            dto.loser = reader.ReadString();
-            dto.scores = reader.ReadString();
-            dto.winners = reader.ReadString();
+            BinaryReader r = Reader(packet);
+            dto.round = r.ReadInt32();
+            dto.phase = (GamePhase)r.ReadByte();
+            dto.taggedPlayer = r.ReadString();
+            dto.timeLeft = r.ReadSingle();
+            dto.loser = r.ReadString();
+            dto.scores = r.ReadString();
+            dto.winners = r.ReadString();
             return true;
         }
-        catch (IOException) { return false; }
+        catch (Exception) { return false; }
+    }
+
+    // ---------------------------------------------------------------------- hello and welcome ---
+    public static byte[] WriteHello(string name, int version)
+    {
+        BinaryWriter w = Start(MsgType.Hello);
+        w.Write(name ?? "");
+        w.Write(version);
+        return Finish(w);
+    }
+
+    public static bool TryReadHello(byte[] packet, out string name, out int version)
+    {
+        name = ""; version = 0;
+        try
+        {
+            BinaryReader r = Reader(packet);
+            name = r.ReadString();
+            version = r.ReadInt32();
+            return true;
+        }
+        catch (Exception) { return false; }
+    }
+
+    public static byte[] Write(WelcomeDTO dto)
+    {
+        BinaryWriter w = Start(MsgType.Welcome);
+        w.Write(dto.playerId);
+        w.Write(dto.objectId);
+        w.Write(dto.objectIds.Length);
+        for (int i = 0; i < dto.objectIds.Length; i++)
+        {
+            w.Write(dto.objectIds[i]);
+            w.Write(dto.names[i] ?? "");
+        }
+        return Finish(w);
+    }
+
+    public static bool TryRead(byte[] packet, out WelcomeDTO dto)
+    {
+        dto = new WelcomeDTO();
+        try
+        {
+            BinaryReader r = Reader(packet);
+            dto.playerId = r.ReadInt32();
+            dto.objectId = r.ReadInt32();
+            int count = r.ReadInt32();
+            if (count < 0 || count > MaxPlayers) return false;
+
+            dto.objectIds = new int[count];
+            dto.names = new string[count];
+            for (int i = 0; i < count; i++)
+            {
+                dto.objectIds[i] = r.ReadInt32();
+                dto.names[i] = r.ReadString();
+            }
+            return true;
+        }
+        catch (Exception) { return false; }
+    }
+
+    public static byte[] WriteRefuse(string reason)
+    {
+        BinaryWriter w = Start(MsgType.Refuse);
+        w.Write(reason ?? "");
+        return Finish(w);
+    }
+
+    public static bool TryReadRefuse(byte[] packet, out string reason)
+    {
+        reason = "";
+        try { reason = Reader(packet).ReadString(); return true; }
+        catch (Exception) { return false; }
+    }
+
+    // -------------------------------------------------------------- virtual connection (Lab 6) ---
+    // Ping carries the client's clock and its last measured ping, so the host can show it.
+    public static byte[] WritePing(float time, int pingMs)
+    {
+        BinaryWriter w = Start(MsgType.Ping);
+        w.Write(time);
+        w.Write(pingMs);
+        return Finish(w);
+    }
+
+    public static bool TryReadPing(byte[] packet, out float time, out int pingMs)
+    {
+        time = 0f; pingMs = 0;
+        try
+        {
+            BinaryReader r = Reader(packet);
+            time = r.ReadSingle();
+            pingMs = r.ReadInt32();
+            return true;
+        }
+        catch (Exception) { return false; }
+    }
+
+    // Pong sends the Ping's time back unchanged: now minus that time is the round trip.
+    public static byte[] WritePong(float time)
+    {
+        BinaryWriter w = Start(MsgType.Pong);
+        w.Write(time);
+        return Finish(w);
+    }
+
+    public static bool TryReadPong(byte[] packet, out float time)
+    {
+        time = 0f;
+        try { time = Reader(packet).ReadSingle(); return true; }
+        catch (Exception) { return false; }
+    }
+
+    public static byte[] WritePlayerLeft(int objectId)
+    {
+        BinaryWriter w = Start(MsgType.PlayerLeft);
+        w.Write(objectId);
+        return Finish(w);
+    }
+
+    public static bool TryReadPlayerLeft(byte[] packet, out int objectId)
+    {
+        objectId = 0;
+        try { objectId = Reader(packet).ReadInt32(); return true; }
+        catch (Exception) { return false; }
+    }
+
+    // ------------------------------------------------------------------------------- helpers ---
+    static BinaryWriter Start(MsgType type)
+    {
+        BinaryWriter w = new BinaryWriter(new MemoryStream());
+        w.Write((byte)type);
+        return w;
+    }
+
+    static byte[] Finish(BinaryWriter w)
+    {
+        w.Flush();
+        return ((MemoryStream)w.BaseStream).ToArray();
+    }
+
+    // Skips the MsgType byte, the caller already looked at it.
+    static BinaryReader Reader(byte[] packet)
+    {
+        return new BinaryReader(new MemoryStream(packet, 1, packet.Length - 1));
     }
 }

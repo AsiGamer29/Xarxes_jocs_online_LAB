@@ -1,6 +1,7 @@
 using UnityEngine;
 
 // Added to every player by GameSpawner. Game data only travels over UDP.
+// Players are told apart by their network ID: the host gives it, clients learn it from Welcome.
 // The local player sends its state about 20 times per second, in binary (PlayerStateDTO).
 // The others follow the last state received: the position is smoothed so that 20 packets per
 // second look like continuous movement, and the animation uses the state that was sent.
@@ -34,10 +35,11 @@ public class PlayerNetSync : MonoBehaviour
 
     public bool IsLocal { get { return m_isLocal; } }
     public string PlayerName { get { return m_name; } }
+    public int NetworkId { get; set; }   // 0 until known
 
     void Update()
     {
-        if (!ServerSession.UdpGame) return;
+        if (!ServerSession.UdpGame || NetworkId == 0) return;
 
         if (m_isLocal) SendState();
         else FollowState();
@@ -51,7 +53,7 @@ public class PlayerNetSync : MonoBehaviour
         PlayerStateDTO state = new PlayerStateDTO
         {
             sequence = ++m_sequence,
-            playerName = m_name,
+            objectId = NetworkId,
             x = transform.position.x,
             y = transform.position.y,
             facingRight = m_controller.FacingRight,
@@ -66,7 +68,7 @@ public class PlayerNetSync : MonoBehaviour
     void FollowState()
     {
         PlayerStateDTO state;
-        if (!ServerSession.TryGetRemoteState(m_name, out state)) return;
+        if (!ServerSession.TryGetRemoteState(NetworkId, out state)) return;
 
         Vector2 target = new Vector2(state.x, state.y);
         Vector2 next = m_placed

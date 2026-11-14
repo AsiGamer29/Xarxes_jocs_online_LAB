@@ -46,10 +46,18 @@ public class TagGame : MonoBehaviour
     {
         if (!ServerSession.UdpGame) return;
 
-        if (!ServerSession.IsGameServer && (ServerSession.Client == null || ServerSession.Client.Status != LobbyClient.State.Connected))
+        if (!ServerSession.IsGameServer)
         {
-            LeaveMatch();
-            return;
+            if (ServerSession.Client == null || ServerSession.Client.Status != LobbyClient.State.Connected)
+            {
+                LeaveMatch("Disconnected from the host");
+                return;
+            }
+            if (ServerSession.UdpClient != null && ServerSession.UdpClient.Status == UdpGameClient.State.Failed)
+            {
+                LeaveMatch(ServerSession.UdpClient.LastError);
+                return;
+            }
         }
 
         if (ServerSession.IsGameServer) RunRules();
@@ -244,11 +252,12 @@ public class TagGame : MonoBehaviour
 
     public void OnBackToMenuClicked()
     {
-        LeaveMatch();
+        LeaveMatch("");
     }
 
-    void LeaveMatch()
+    void LeaveMatch(string reason)
     {
+        ServerSession.DisconnectReason = reason;
         if (ServerSession.Client != null) ServerSession.Client.Leave();
         ServerSession.Reset();
         SceneManager.LoadScene(ServerSession.SceneMenu);

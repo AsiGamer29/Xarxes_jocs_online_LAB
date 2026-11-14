@@ -226,6 +226,20 @@ public class LobbyServer : MonoBehaviour
         Announce("[PLAYER] " + m.name + " left the lobby");
     }
 
+    // The UDP side stopped hearing from this player: close its TCP connection too.
+    public void Kick(string name, string reason)
+    {
+        Member m = null;
+        foreach (Member candidate in m_members)
+            if (candidate.socket != null && candidate.name == name) m = candidate;
+        if (m == null) return;
+
+        m_members.Remove(m);
+        BroadcastPlayers();
+        Announce("[PLAYER] " + m.name + " " + reason);
+        CloseSocket(m.socket);
+    }
+
     void Announce(string line)
     {
         AddEvent(line);

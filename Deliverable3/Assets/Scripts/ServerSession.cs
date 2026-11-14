@@ -13,6 +13,9 @@ public static class ServerSession
     public const string SceneLobby = "Lobby";
     public const string SceneGame = "SampleScene";
 
+    // Sent in Hello. The host refuses a client built from different code.
+    public const int GameVersion = 1;
+
     public static string PlayerName = "Player";
     public static string ServerIp = "127.0.0.1";
     public static int Port = 9050;
@@ -22,6 +25,12 @@ public static class ServerSession
     public static LobbyClient Client;
     public static UdpGameServer UdpServer;
     public static UdpGameClient UdpClient;
+
+    // Network ID <-> GameObject for this game (Lab 6). The host creates the IDs, clients copy them.
+    public static LinkingContext Linking = new LinkingContext();
+
+    // Why we went back to the menu ("Connection lost"...). The menu shows it once.
+    public static string DisconnectReason = "";
 
     public static List<string> CurrentPlayers
     {
@@ -74,6 +83,7 @@ public static class ServerSession
         }
 
         IsHost = false;
+        Linking = new LinkingContext();
     }
 
     public static string SanitizeName(string raw)
@@ -121,23 +131,34 @@ public static class ServerSession
         else if (UdpClient != null) UdpClient.SendState(state);
     }
 
-    public static bool TryGetRemoteState(string name, out PlayerStateDTO state)
+    public static bool TryGetRemoteState(int objectId, out PlayerStateDTO state)
     {
         state = default(PlayerStateDTO);
-        if (UdpServer != null) return UdpServer.RemoteStates.TryGetValue(name, out state);
-        if (UdpClient != null) return UdpClient.RemoteStates.TryGetValue(name, out state);
+        if (UdpServer != null) return UdpServer.RemoteStates.TryGetValue(objectId, out state);
+        if (UdpClient != null) return UdpClient.RemoteStates.TryGetValue(objectId, out state);
         return false;
     }
 
     // UDP can deliver an old packet after a newer one. Keep only the newest per player.
     // The subtraction keeps working when the counter wraps around.
-    public static bool StoreIfNewer(Dictionary<string, PlayerStateDTO> states, PlayerStateDTO state)
+    public static bool StoreIfNewer(Dictionary<int, PlayerStateDTO> states, PlayerStateDTO state)
     {
         PlayerStateDTO previous;
-        if (states.TryGetValue(state.playerName, out previous) && (int)(state.sequence - previous.sequence) <= 0)
+        if (states.TryGetValue(state.objectId, out previous) && (int)(state.sequence - previous.sequence) <= 0)
             return false;
-        states[state.playerName] = state;
+        states[state.objectId] = state;
         return true;
+    }
+
+    // The network simulator of this PC, for the sliders of the debug overlay.
+    public static NetSim Sim
+    {
+        get
+        {
+            if (UdpServer != null) return UdpServer.Sim;
+            if (UdpClient != null) return UdpClient.Sim;
+            return null;
+        }
     }
 
     // The host runs the tag rules; clients only show what it sends.

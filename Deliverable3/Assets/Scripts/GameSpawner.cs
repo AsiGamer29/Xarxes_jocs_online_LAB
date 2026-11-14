@@ -4,6 +4,8 @@ using UnityEngine;
 
 // Spawns one Player per lobby member when the game scene loads, in the order the server sent the
 // list, so every PC puts each player in the same place.
+// The host registers every player in the linking context and so gives it its network ID; a client
+// links its players to the IDs that come in the Welcome (Lab 6).
 // The player of this PC is moved with the keyboard. The others are moved by the network, so
 // their input is off and their body is kinematic.
 public class GameSpawner : MonoBehaviour
@@ -22,6 +24,7 @@ public class GameSpawner : MonoBehaviour
     GameObject m_localPlayer;
     Vector2 m_localSpawn;
     float m_nextCleanup;
+    bool m_linked;
 
     // Every player on screen, by name. TagGame reads it.
     public IReadOnlyDictionary<string, GameObject> Players { get { return m_players; } }
@@ -44,26 +47,48 @@ public class GameSpawner : MonoBehaviour
 
         gameObject.AddComponent<TagGame>();
         gameObject.AddComponent<TagGameUI>();
+        AddDebugOverlay();
     }
 
-    // Someone left the room: take their player off the screen.
     void Update()
     {
+        LinkFromWelcome();
+        LabelNetworkIds();
+
         if (Time.time < m_nextCleanup) return;
         m_nextCleanup = Time.time + 0.5f;
 
+        // Someone left the room: take their player off the screen.
         List<string> room = ServerSession.CurrentPlayers;
         if (room == null) return;
 
         List<string> gone = new List<string>();
         foreach (string name in m_players.Keys)
             if (!room.Contains(name)) gone.Add(name);
+        foreach (string name in gone) RemovePlayer(name);
+    }
 
-        foreach (string name in gone)
-        {
-            Destroy(m_players[name]);
-            m_players.Remove(name);
-        }
+    public int NetworkIdOf(string playerName)
+    {
+        GameObject player;
+        if (!m_players.TryGetValue(playerName, out player)) return 0;
+        return player.GetComponent<PlayerNetSync>().NetworkId;
+    }
+
+    public void RemovePlayer(int networkId)
+    {
+        GameObject player = ServerSession.Linking.Find(networkId);
+        if (player != null) RemovePlayer(player.GetComponent<PlayerNetSync>().PlayerName);
+    }
+
+    public void RemovePlayer(string playerName)
+    {
+        GameObject player;
+        if (!m_players.TryGetValue(playerName, out player)) return;
+
+        ServerSession.Linking.Unregister(NetworkIdOf(playerName));
+        m_players.Remove(playerName);
+        Destroy(player);
     }
 
     // New round: back to the start. Only the local player; the others follow through the network.
@@ -85,6 +110,9 @@ public class GameSpawner : MonoBehaviour
         PlayerNetSync sync = player.AddComponent<PlayerNetSync>();
         sync.Init(playerName, isLocal);
 
+        // Only the host creates network IDs. A client waits for the Welcome (LinkFromWelcome).
+        if (ServerSession.UdpClient == null) sync.NetworkId = ServerSession.Linking.Register(player);
+
         SetNameTag(player, playerName);
         m_players[playerName] = player;
 
@@ -94,6 +122,45 @@ public class GameSpawner : MonoBehaviour
             m_localSpawn = position;
         }
         else MakeRemote(player);
+    }
+
+    // Client: the Welcome says which network ID is which player. Register them with those IDs.
+    void LinkFromWelcome()
+    {
+        UdpGameClient udp = ServerSession.UdpClient;
+        if (m_linked || udp == null || !udp.HasWelcome) return;
+
+        WelcomeDTO welcome = udp.Welcome;
+        for (int i = 0; i < welcome.objectIds.Length; i++)
+        {
+            GameObject player;
+            if (!m_players.TryGetValue(welcome.names[i], out player)) continue;
+            ServerSession.Linking.Register(player, welcome.objectIds[i]);
+            player.GetComponent<PlayerNetSync>().NetworkId = welcome.objectIds[i];
+        }
+        m_linked = true;
+    }
+
+    // F1 shows the network: packets per second, pings, the ID above every player and the simulator.
+    void AddDebugOverlay()
+    {
+        gameObject.AddComponent<NetDebugOverlay>();
+
+        NetSim sim = ServerSession.Sim;
+        if (sim != null)
+        {
+            NetDebugOverlay.AddSlider("Latency (s)", () => sim.latency, v => sim.latency = v, 0f, 0.5f);
+            NetDebugOverlay.AddSlider("Jitter (s)", () => sim.jitter, v => sim.jitter = v, 0f, 0.2f);
+            NetDebugOverlay.AddSlider("Packet loss (0 to 1)", () => sim.dropChance, v => sim.dropChance = v, 0f, 1f);
+        }
+        NetDebugOverlay.AddButton("Leave the game", () => { if (TagGame.Instance != null) TagGame.Instance.OnBackToMenuClicked(); });
+    }
+
+    void LabelNetworkIds()
+    {
+        NetDebugOverlay.NetworkedObjects = ServerSession.Linking.Count;
+        foreach (KeyValuePair<int, GameObject> entry in ServerSession.Linking.All)
+            NetDebugOverlay.Label(entry.Value, "id " + entry.Key);
     }
 
     static void MakeRemote(GameObject player)
