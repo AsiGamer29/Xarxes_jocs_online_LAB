@@ -67,8 +67,8 @@ CircleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: -0.1}
-  m_Radius: 0.7
+  m_Offset: {x: -0.005, y: -0.07}
+  m_Radius: 0.1
 --- !u!114 &1773058553078390587
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -111,8 +111,8 @@ Transform:
   m_GameObject: {fileID: 6682492415463141479}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.83, z: 0}
-  m_LocalScale: {x: 1.25, y: 1.25, z: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 6.5, y: 6.5, z: 6.5}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2940392859939962974}
@@ -169,7 +169,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -6598548400859191040, guid: 435a4c4115b300141b9a36023df2451b,
+  m_Sprite: {fileID: 4334783836991956000, guid: d7ea4425e5b39df45852a832a221ca11,
     type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -242,14 +242,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   moveSpeed: 7
-  jumpForce: 15
+  jumpForce: 16.5
   groundCheck: {fileID: 2940392859939962974}
   groundRadius: 0.2
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
   dashSpeed: 20
-  dashDuration: 0.18
+  dashDuration: 0.25
   dashCooldown: 0.4
   crouchKey: 306
   dashKey: 304
@@ -287,8 +287,8 @@ CapsuleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: -0.125}
-  m_Size: {x: 0.75, y: 0.75}
+  m_Offset: {x: -0.005, y: -0.07957938}
+  m_Size: {x: 0.10000001, y: 0.16122743}
   m_Direction: 0
 --- !u!1 &7471304485043547614
 GameObject:
@@ -315,7 +315,7 @@ Transform:
   m_GameObject: {fileID: 7471304485043547614}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.535, z: 0}
+  m_LocalPosition: {x: -0.004, y: -0.16, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -355,8 +355,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0.8}
-  m_SizeDelta: {x: 2.5, y: 0.4}
+  m_AnchoredPosition: {x: -0.0015, y: 0.09}
+  m_SizeDelta: {x: 0.5, y: 0.1}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!23 &8497934625631844557
 MeshRenderer:
@@ -437,8 +437,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4278190080
-  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -455,8 +455,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 6
-  m_fontSizeBase: 6
+  m_fontSize: 1
+  m_fontSizeBase: 1
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -494,7 +494,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: 0, y: 0.11187486, z: 0, w: 0.10794526}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   _SortingLayer: 0
