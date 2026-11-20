@@ -71,7 +71,9 @@ public class PlayerNetSync : MonoBehaviour
         if (!ServerSession.TryGetRemoteState(NetworkId, out state)) return;
 
         Vector2 target = new Vector2(state.x, state.y);
-        Vector2 next = m_placed
+        bool bigJump = m_placed && Vector2.Distance(transform.position, target) > 5f; //loop
+
+        Vector2 next = (m_placed && !bigJump)
             ? Vector2.Lerp(transform.position, target, 1f - Mathf.Exp(-Smooth * Time.deltaTime))
             : target;   // first packet: jump straight there
         m_placed = true;

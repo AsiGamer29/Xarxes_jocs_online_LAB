@@ -32,6 +32,10 @@ public class PlayerController : MonoBehaviour
     private float dashDirection;
     private float defaultGravity;
 
+    //loop mechanic
+    [HideInInspector] public Transform leftBound;
+    [HideInInspector] public Transform rightBound;
+
     // Read by PlayerNetSync to send this player's state.
     public bool FacingRight { get { return facingRight; } }
     public bool IsMoving { get { return Mathf.Abs(moveInput) > 0.01f; } }
@@ -50,6 +54,8 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundRadius, groundLayer);
+
+        WrapAround();
 
         if (isDashing)
         {
@@ -123,6 +129,19 @@ public class PlayerController : MonoBehaviour
         anim.SetBool("IsCrouching", isCrouching);
         anim.SetBool("IsGrounded", isGrounded);
         anim.SetBool("IsDashing", isDashing);
+    }
+
+    void WrapAround()
+    {
+        if (leftBound == null || rightBound == null) return;
+
+        Vector3 pos = transform.position;
+
+        if (pos.x > rightBound.position.x) pos.x = leftBound.position.x;
+        else if (pos.x < leftBound.position.x) pos.x = rightBound.position.x;
+        else return;
+
+        transform.position = pos;
     }
 
     void OnDrawGizmosSelected()

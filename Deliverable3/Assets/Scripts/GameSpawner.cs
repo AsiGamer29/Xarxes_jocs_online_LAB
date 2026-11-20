@@ -29,6 +29,10 @@ public class GameSpawner : MonoBehaviour
     // Every player on screen, by name. TagGame reads it.
     public IReadOnlyDictionary<string, GameObject> Players { get { return m_players; } }
 
+    [Header("Wrap")]
+    [SerializeField] Transform leftBound;
+    [SerializeField] Transform rightBound;
+
     void Start()
     {
         List<string> players = ServerSession.CurrentPlayers;
@@ -120,6 +124,13 @@ public class GameSpawner : MonoBehaviour
         {
             m_localPlayer = player;
             m_localSpawn = position;
+
+            PlayerController controller = player.GetComponent<PlayerController>();
+            if (controller != null)
+            {
+                controller.leftBound = leftBound;
+                controller.rightBound = rightBound;
+            }
         }
         else MakeRemote(player);
     }
