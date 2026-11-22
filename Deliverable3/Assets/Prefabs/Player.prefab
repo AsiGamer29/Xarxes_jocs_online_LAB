@@ -146,7 +146,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 145085ab3349dd748b170956bf94f4ce, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -169,7 +169,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 4334783836991956000, guid: d7ea4425e5b39df45852a832a221ca11,
+  m_Sprite: {fileID: 4071352148332907516, guid: 322416fb757239749b92c75b2504c487,
     type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -253,6 +253,8 @@ MonoBehaviour:
   dashCooldown: 0.4
   crouchKey: 306
   dashKey: 304
+  leftBound: {fileID: 0}
+  rightBound: {fileID: 0}
 --- !u!70 &6889104376016843052
 CapsuleCollider2D:
   m_ObjectHideFlags: 0

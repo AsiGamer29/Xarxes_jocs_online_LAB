@@ -114,6 +114,11 @@ public class GameSpawner : MonoBehaviour
         PlayerNetSync sync = player.AddComponent<PlayerNetSync>();
         sync.Init(playerName, isLocal);
 
+        // Player color depending on the player
+        PlayerColor color = player.GetComponent<PlayerColor>();
+        if (color == null) color = player.AddComponent<PlayerColor>();
+        color.SetIndex(index);
+
         // Only the host creates network IDs. A client waits for the Welcome (LinkFromWelcome).
         if (ServerSession.UdpClient == null) sync.NetworkId = ServerSession.Linking.Register(player);
 
