@@ -296,6 +296,13 @@ public class UdpGameServer : MonoBehaviour
         SendToOthers(Serializer.Write(game), null);
     }
 
+    // replication packets go to every client, the clients never send them
+    public void SendReplication(byte[] packet)
+    {
+        if (m_state != State.Running) return;
+        SendToOthers(packet, null);
+    }
+
     // Every client except 'skip' (the one who sent it). null = all of them.
     void SendToOthers(byte[] packet, ClientProxy skip)
     {

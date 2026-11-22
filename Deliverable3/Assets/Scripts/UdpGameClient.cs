@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.IO;
 using UnityEngine;
 
 // UDP game channel, client side. Created when the game starts, once TCP has told us our name.
@@ -177,6 +178,11 @@ public class UdpGameClient : MonoBehaviour
                 RemoteStates.Remove(objectId);
                 GameSpawner spawner = FindAnyObjectByType<GameSpawner>();
                 if (spawner != null) spawner.RemovePlayer(objectId);
+                break;
+
+            case MsgType.Replication:
+                if (WorldReplicationClient.Instance != null)
+                    WorldReplicationClient.Instance.ReadPacket(new BinaryReader(new MemoryStream(data, 1, data.Length - 1)));
                 break;
         }
     }
