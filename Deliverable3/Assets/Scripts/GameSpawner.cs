@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 
 // Spawns one Player per lobby member when the game scene loads, in the order the server sent the
@@ -92,6 +91,7 @@ public class GameSpawner : MonoBehaviour
         if (!m_players.TryGetValue(playerName, out player)) return;
 
         ServerSession.Linking.Unregister(NetworkIdOf(playerName));
+        if (WorldReplicationHost.Instance != null) WorldReplicationHost.Instance.Untrack(player.GetComponent<PlayerNetSync>());
         m_players.Remove(playerName);
         Destroy(player);
     }
@@ -120,10 +120,14 @@ public class GameSpawner : MonoBehaviour
         if (color == null) color = player.AddComponent<PlayerColor>();
         color.SetIndex(index);
 
-        // Only the host creates network IDs. A client waits for the Welcome (LinkFromWelcome).
-        if (ServerSession.UdpClient == null) sync.NetworkId = ServerSession.Linking.Register(player);
+        // Only the host creates network IDs and replicates the players. A client waits for the
+        // Welcome (LinkFromWelcome).
+        if (ServerSession.UdpClient == null)
+        {
+            sync.NetworkId = ServerSession.Linking.Register(player);
+            if (WorldReplicationHost.Instance != null) WorldReplicationHost.Instance.Track(sync);
+        }
 
-        SetNameTag(player, playerName);
         m_players[playerName] = player;
 
         if (isLocal)
@@ -194,12 +198,5 @@ public class GameSpawner : MonoBehaviour
             body.sleepMode = RigidbodySleepMode2D.NeverSleep;
             body.linearVelocity = Vector2.zero;
         }
-    }
-
-    static void SetNameTag(GameObject player, string playerName)
-    {
-        Transform tagTransform = player.transform.Find("NameTag");
-        if (tagTransform == null) return;
-        tagTransform.GetComponent<TMP_Text>().text = playerName;
     }
 }

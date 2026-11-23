@@ -19,7 +19,6 @@ public class UdpGameClient : MonoBehaviour
     public int port = 9050;
     public string localName = "";     // the name the server gave us over TCP
 
-    public readonly Dictionary<int, PlayerStateDTO> RemoteStates = new Dictionary<int, PlayerStateDTO>();
     public GameStateDTO GameState;
     public bool HasGameState;
     public WelcomeDTO Welcome;
@@ -169,11 +168,6 @@ public class UdpGameClient : MonoBehaviour
                     PingMs = Mathf.RoundToInt((Time.realtimeSinceStartup - sentAt) * 1000f);
                 break;
 
-            case MsgType.PlayerState:
-                PlayerStateDTO state;
-                if (Serializer.TryRead(data, out state)) ServerSession.StoreIfNewer(RemoteStates, state);
-                break;
-
             case MsgType.GameState:
                 GameStateDTO game;
                 if (Serializer.TryRead(data, out game)) { GameState = game; HasGameState = true; }
@@ -182,7 +176,6 @@ public class UdpGameClient : MonoBehaviour
             case MsgType.PlayerLeft:
                 int objectId;
                 if (!Serializer.TryReadPlayerLeft(data, out objectId)) return;
-                RemoteStates.Remove(objectId);
                 GameSpawner spawner = FindAnyObjectByType<GameSpawner>();
                 if (spawner != null) spawner.RemovePlayer(objectId);
                 break;
@@ -202,17 +195,6 @@ public class UdpGameClient : MonoBehaviour
                 m_lastButtonState = buttonSeq;
                 PButton.ApplyMask(mask);
                 break;
-
-            case MsgType.Slow:
-                {
-                    int slowedId;
-                    float slowSeconds, slowFactor;
-                    if (!Serializer.TryReadSlow(data, out slowedId, out slowSeconds, out slowFactor)) return;
-                    if (slowedId != Welcome.objectId) return;
-                    GameObject slowed = ServerSession.Linking.Find(slowedId);
-                    if (slowed != null) slowed.GetComponent<PlayerController>().ApplySlow(slowSeconds, slowFactor);
-                    break;
-                }
 
             case MsgType.Trampoline:
                 {

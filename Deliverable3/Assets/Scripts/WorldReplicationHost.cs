@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// The one replication manager of the host: every object of the world that is created and destroyed
-// while playing goes through it, so there is a single packet sequence and one packet per tick.
+// The one replication manager of the host: the players, the coins and the bullets all go through it,
+// so there is a single packet sequence and one packet per tick with the whole world.
 // In the game scene opened without a network it has no manager and only gives out the network ids.
 public class WorldReplicationHost : MonoBehaviour
 {
@@ -33,6 +33,18 @@ public class WorldReplicationHost : MonoBehaviour
         if (m_replication != null) m_replication.MarkCreate(obj.id);
     }
 
+    // an object every PC already has with this id (the players: GameSpawner creates them on every PC
+    // and the Welcome gives the ids), so only its updates travel
+    public void Track(ReplicatedObject obj)
+    {
+        if (!m_objects.Contains(obj)) m_objects.Add(obj);
+    }
+
+    public void Untrack(ReplicatedObject obj)
+    {
+        m_objects.Remove(obj);
+    }
+
     // tells the clients to destroy it, then destroys it here
     public void Despawn(ReplicatedObject obj)
     {
@@ -47,6 +59,7 @@ public class WorldReplicationHost : MonoBehaviour
         if (m_replication == null || Time.time < m_nextTick) return;
         m_nextTick = Time.time + TickInterval;
 
+        m_objects.RemoveAll(obj => obj == null);
         foreach (ReplicatedObject obj in m_objects) m_replication.MarkUpdate(obj.id);
         ServerSession.UdpServer.SendReplication(m_replication.WritePacket());
     }

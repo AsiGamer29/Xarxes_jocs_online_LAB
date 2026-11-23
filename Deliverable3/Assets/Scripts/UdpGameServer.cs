@@ -206,8 +206,7 @@ public class UdpGameServer : MonoBehaviour
                     PlayerStateDTO state;
                     if (client == null || !Serializer.TryRead(data, out state)) return;
                     state.objectId = client.objectId;   // trust the address, not what the packet says
-                    if (ServerSession.StoreIfNewer(RemoteStates, state))
-                        SendToOthers(Serializer.Write(state), client);
+                    ServerSession.StoreIfNewer(RemoteStates, state);   // the replication packet takes it to the others
                     break;
                 }
 
@@ -327,26 +326,11 @@ public class UdpGameServer : MonoBehaviour
         SendToOthers(Serializer.WriteButtonState(++m_buttonSeq, mask), null);
     }
 
-    // an event, not state: sent three times so one lost packet does not cancel the slow
-    public void SendSlow(int objectId, float seconds, float speedFactor)
-    {
-        if (m_state != State.Running) return;
-        byte[] packet = Serializer.WriteSlow(objectId, seconds, speedFactor);
-        for (int i = 0; i < 3; i++) SendToOthers(packet, null);
-    }
-
     // the host bounced on a trampoline, the clients that did it send theirs to HandleMessage
     public void SendTrampoline(int index)
     {
         if (m_state != State.Running) return;
         SendToOthers(Serializer.WriteTrampoline(index), null);
-    }
-
-    // The host plays too: its own state goes to every client.
-    public void SendHostState(PlayerStateDTO state)
-    {
-        if (m_state != State.Running) return;
-        SendToOthers(Serializer.Write(state), null);
     }
 
     public void SendGameState(GameStateDTO game)

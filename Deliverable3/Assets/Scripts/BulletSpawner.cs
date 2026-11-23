@@ -63,11 +63,10 @@ public class BulletSpawner : MonoBehaviour
         WorldReplicationHost.Instance.Spawn(bullet);
     }
 
-    // every player moves itself, so the victim is told to slow down on its own PC
+    // every player moves itself, so the slow travels in the victim's replication fields to its own PC
     public void OnHit(PlayerNetSync victim)
     {
-        if (victim.IsLocal) victim.GetComponent<PlayerController>().ApplySlow(slowSeconds, slowSpeedFactor);
-        else ServerSession.SendSlow(victim.NetworkId, slowSeconds, slowSpeedFactor);
+        victim.Slow(slowSeconds, slowSpeedFactor);
 
         Debug.Log("[SHOTS] " + victim.PlayerName + " hit, slowed for " + slowSeconds + " s");
     }

@@ -7,7 +7,8 @@ public enum ReplicationAction : byte { Create = 1, Update = 2, Destroy = 3 }
 
 // replication manager, host side
 // the game marks what happened to each object and once per tick WritePacket turns it into one packet:
-// [MsgType.Replication][sequence][count] and then per object [id][action][type][fields] (a destroy has no more)
+// [MsgType.Replication][sequence][count] and then per object [id][action][type][length][fields]
+// (a destroy has no more). the length lets a client skip an object it cannot read without losing the rest
 public class WorldReplicationServer
 {
     const float RepeatTime = 1f;   // creates and destroys are repeated for 1 s
@@ -71,10 +72,22 @@ public class WorldReplicationServer
 
             ReplicatedObject obj = m_linking.Find(entry.Key).GetComponent<ReplicatedObject>();
             writer.Write(obj.type);                // 3. its class, which prefab
-            obj.Write(writer);                     // 4. its fields
+            WriteFields(writer, obj);              // 4. its fields
         }
 
         m_pending.Clear();
         return stream.ToArray();
+    }
+
+    // the object writes itself in a separate buffer first, so its length can go before it
+    static void WriteFields(BinaryWriter writer, ReplicatedObject obj)
+    {
+        MemoryStream fields = new MemoryStream();
+        BinaryWriter fieldWriter = new BinaryWriter(fields);
+        obj.Write(fieldWriter);
+        fieldWriter.Flush();
+
+        writer.Write((ushort)fields.Length);
+        writer.Write(fields.GetBuffer(), 0, (int)fields.Length);
     }
 }

@@ -13705,6 +13705,7 @@ GameObject:
   - component: {fileID: 762246120}
   - component: {fileID: 762246123}
   - component: {fileID: 762246122}
+  - component: {fileID: 762246119}
   m_Layer: 0
   m_Name: WorldReplication
   m_TagString: Untagged
@@ -13712,6 +13713,29 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &762246119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 762246118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d6623812e4fae74bb6e17cc4908c949, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CoinSpawner
+  coinPrefab: {fileID: 8636212420502517449, guid: 77c8b03e65dcd1b448e57c1b0af19667,
+    type: 3}
+  spawnPoints:
+  - {fileID: 247376028}
+  - {fileID: 2122564059}
+  - {fileID: 680966437}
+  - {fileID: 1925027159}
+  - {fileID: 1393851195}
+  - {fileID: 2067115731}
+  respawnTime: 5
+  goldenChance: 0.2
 --- !u!114 &762246120
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13726,6 +13750,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WorldReplicationClient
   prefabs:
   - {fileID: 4829233185338480822, guid: 8b3db7873022cfb4a8f73aabb52b3d73, type: 3}
+  - {fileID: 8636212420502517449, guid: 77c8b03e65dcd1b448e57c1b0af19667, type: 3}
 --- !u!4 &762246121
 Transform:
   m_ObjectHideFlags: 0

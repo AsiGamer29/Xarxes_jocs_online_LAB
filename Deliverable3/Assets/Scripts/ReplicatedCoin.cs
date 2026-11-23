@@ -39,12 +39,12 @@ public class ReplicatedCoin : ReplicatedObject
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (!ServerSession.IsGameServer) return;
+        if (!ServerSession.HasAuthority) return;
 
         // the capsule and the tag trigger of a player both enter, CoinSpawner ignores the second one
         PlayerNetSync player = other.GetComponentInParent<PlayerNetSync>();
         if (player == null || CoinSpawner.Instance == null) return;
 
-        CoinSpawner.Instance.Collect(this, player.PlayerName);
+        CoinSpawner.Instance.Collect(this, player);
     }
 }

@@ -10,7 +10,7 @@ public static class Serializer
     const int MaxPlayers = 64;   // a Welcome with more is garbage
 
     // ---------------------------------------------------------------------------- player state ---
-    // The five bools go in one byte: bit 0 facingRight, 1 moving, 2 grounded, 3 crouching, 4 dashing.
+    // Client -> host only. The host sends the players to everyone in the replication packet.
     public static byte[] Write(PlayerStateDTO dto)
     {
         BinaryWriter w = Start(MsgType.PlayerState);
@@ -18,15 +18,30 @@ public static class Serializer
         w.Write(dto.objectId);
         w.Write(dto.x);
         w.Write(dto.y);
+        w.Write(PackFlags(dto));
+        return Finish(w);
+    }
 
+    // The five bools go in one byte: bit 0 facingRight, 1 moving, 2 grounded, 3 crouching, 4 dashing.
+    // PlayerNetSync uses the same byte in the replication packet.
+    public static byte PackFlags(PlayerStateDTO dto)
+    {
         byte flags = 0;
         if (dto.facingRight) flags |= 1;
         if (dto.moving) flags |= 2;
         if (dto.grounded) flags |= 4;
         if (dto.crouching) flags |= 8;
         if (dto.dashing) flags |= 16;
-        w.Write(flags);
-        return Finish(w);
+        return flags;
+    }
+
+    public static void UnpackFlags(byte flags, ref PlayerStateDTO dto)
+    {
+        dto.facingRight = (flags & 1) != 0;
+        dto.moving = (flags & 2) != 0;
+        dto.grounded = (flags & 4) != 0;
+        dto.crouching = (flags & 8) != 0;
+        dto.dashing = (flags & 16) != 0;
     }
 
     public static bool TryRead(byte[] packet, out PlayerStateDTO dto)
@@ -39,13 +54,7 @@ public static class Serializer
             dto.objectId = r.ReadInt32();
             dto.x = r.ReadSingle();
             dto.y = r.ReadSingle();
-
-            byte flags = r.ReadByte();
-            dto.facingRight = (flags & 1) != 0;
-            dto.moving = (flags & 2) != 0;
-            dto.grounded = (flags & 4) != 0;
-            dto.crouching = (flags & 8) != 0;
-            dto.dashing = (flags & 16) != 0;
+            UnpackFlags(r.ReadByte(), ref dto);
             return true;
         }
         catch (Exception) { return false; }
@@ -268,29 +277,6 @@ public static class Serializer
             BinaryReader r = Reader(packet);
             sequence = r.ReadUInt32();
             facingRight = r.ReadBoolean();
-            return true;
-        }
-        catch (Exception) { return false; }
-    }
-
-    public static byte[] WriteSlow(int objectId, float seconds, float speedFactor)
-    {
-        BinaryWriter w = Start(MsgType.Slow);
-        w.Write(objectId);
-        w.Write(seconds);
-        w.Write(speedFactor);
-        return Finish(w);
-    }
-
-    public static bool TryReadSlow(byte[] packet, out int objectId, out float seconds, out float speedFactor)
-    {
-        objectId = 0; seconds = 0f; speedFactor = 1f;
-        try
-        {
-            BinaryReader r = Reader(packet);
-            objectId = r.ReadInt32();
-            seconds = r.ReadSingle();
-            speedFactor = r.ReadSingle();
             return true;
         }
         catch (Exception) { return false; }

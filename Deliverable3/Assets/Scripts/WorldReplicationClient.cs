@@ -4,7 +4,8 @@ using UnityEngine;
 
 // replication manager, client side. it copies what the host says
 // a create for a known id is an update and a destroy for an unknown id is ignored,
-// that is what fixes the lost packets
+// that is what fixes the lost packets. every object comes with the length of its fields, so one
+// object this client cannot read is skipped and the rest of the packet still works
 public class WorldReplicationClient : MonoBehaviour
 {
     public static WorldReplicationClient Instance;
@@ -47,17 +48,24 @@ public class WorldReplicationClient : MonoBehaviour
                 }
 
                 byte type = reader.ReadByte();
-                // unknown prefab, we cannot know how long its fields are
-                if (type >= prefabs.Count) return;
+                int length = reader.ReadUInt16();
+                byte[] fields = reader.ReadBytes(length);
+                if (fields.Length < length) return;   // the packet was cut
 
-                // create, or an update whose create was lost
+                // create, or an update whose create was lost. a type that is not in the list is a player
+                // this client has not linked yet (players come from GameSpawner): skip only that object
                 if (go == null)
                 {
+                    if (type >= prefabs.Count) continue;
                     go = Instantiate(prefabs[type]);
                     go.GetComponent<ReplicatedObject>().id = id;
                     ServerSession.Linking.Register(go, id);
                 }
-                go.GetComponent<ReplicatedObject>().Read(reader);
+
+                ReplicatedObject obj = go.GetComponent<ReplicatedObject>();
+                if (obj == null) continue;
+                try { obj.Read(new BinaryReader(new MemoryStream(fields))); }
+                catch (EndOfStreamException) { }   // its fields are shorter than this build expects
             }
         }
         catch (EndOfStreamException)

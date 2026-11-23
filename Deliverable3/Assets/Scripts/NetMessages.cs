@@ -5,23 +5,22 @@ using System;
 public enum MsgType : byte
 {
     Hello = 1,        // client -> host: my name and game version. Repeated until Welcome arrives
-    PlayerState = 2,  // where a player is and what it is doing, about 20 times per second
+    PlayerState = 2,  // client -> host: where my player is and what it is doing, about 20 times per second
     GameState = 3,    // the tag round, decided by the host, about 10 times per second
     Welcome = 4,      // host -> client: your player ID, your object's network ID, every player in the world
     Refuse = 5,       // host -> client: why you cannot play (old version, not in this game)
     Ping = 6,         // client -> host, every second: keeps the virtual connection alive
     Pong = 7,         // host -> client: the Ping's time sent back, to measure the round trip
     PlayerLeft = 8,   // host -> clients: this network ID timed out, take it off the screen
-    Replication = 9,  // host -> clients: world objects that were created, updated or destroyed
+    Replication = 9,  // host -> clients: the world (players, coins, bullets) created, updated or destroyed
     ButtonPress = 10, // client -> host: i stepped on this button, repeated for a while
     ButtonState = 11, // host -> clients: which buttons are pressed, again and again
     Shoot = 12,       // client -> host: i want to shoot, facing this way. Sent three times
-    Slow = 13,        // host -> clients: this player was hit by a bullet and goes slower for a while
     Trampoline = 14,  // client -> host -> the others: somebody bounced on this trampoline, play its animation
 }
 
-// What a player is doing right now. We send the state (not the input): every PC moves its own
-// player with its own physics, and the others only have to show it.
+// What a player is doing right now, sent by its own PC to the host. We send the state (not the
+// input): every PC moves its own player with its own physics, and the others only have to show it.
 [Serializable]
 public struct PlayerStateDTO
 {

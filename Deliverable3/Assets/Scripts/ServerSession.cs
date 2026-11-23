@@ -124,18 +124,17 @@ public static class ServerSession
         get { return UdpServer != null || UdpClient != null; }
     }
 
-    // The local player's state: the host sends it to every client, a client sends it to the host.
+    // Client: its player's state goes to the host, which sends it to the others in the replication packet.
     public static void SendMyState(PlayerStateDTO state)
     {
-        if (UdpServer != null) UdpServer.SendHostState(state);
-        else if (UdpClient != null) UdpClient.SendState(state);
+        if (UdpClient != null) UdpClient.SendState(state);
     }
 
+    // Host: the last state a client sent of its player.
     public static bool TryGetRemoteState(int objectId, out PlayerStateDTO state)
     {
         state = default(PlayerStateDTO);
         if (UdpServer != null) return UdpServer.RemoteStates.TryGetValue(objectId, out state);
-        if (UdpClient != null) return UdpClient.RemoteStates.TryGetValue(objectId, out state);
         return false;
     }
 
@@ -186,12 +185,6 @@ public static class ServerSession
     public static void SendShoot(bool facingRight)
     {
         if (UdpClient != null) UdpClient.SendShoot(facingRight);
-    }
-
-    // host: tell everybody that this player goes slower for a while
-    public static void SendSlow(int objectId, float seconds, float speedFactor)
-    {
-        if (UdpServer != null) UdpServer.SendSlow(objectId, seconds, speedFactor);
     }
 
     // somebody bounced on a trampoline: the host tells everybody, a client tells the host
