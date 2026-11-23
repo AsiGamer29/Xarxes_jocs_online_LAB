@@ -32,6 +32,9 @@ public class PlayerController : MonoBehaviour
     private float dashDirection;
     private float defaultGravity;
 
+    private float slowUntil;
+    private float slowFactor = 1f;
+
     //loop mechanic
     [HideInInspector] public Transform leftBound;
     [HideInInspector] public Transform rightBound;
@@ -42,6 +45,13 @@ public class PlayerController : MonoBehaviour
     public bool IsGrounded { get { return isGrounded; } }
     public bool IsCrouching { get { return isCrouching; } }
     public bool IsDashing { get { return isDashing; } }
+
+    // A bullet hit this player: it walks slower for a while. A new hit starts the time again.
+    public void ApplySlow(float seconds, float speedFactor)
+    {
+        slowUntil = Time.time + seconds;
+        slowFactor = speedFactor;
+    }
 
     void Awake()
     {
@@ -100,7 +110,8 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);
+        float speed = Time.time < slowUntil ? moveSpeed * slowFactor : moveSpeed;
+        rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
     }
 
     void StartDash()

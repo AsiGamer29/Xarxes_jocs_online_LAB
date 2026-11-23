@@ -12,7 +12,8 @@ public class GameSpawner : MonoBehaviour
 {
     [SerializeField] GameObject playerPrefab;
     [Tooltip("One per player, in lobby order (host first). With more players than points, they repeat.")]
-    [SerializeField] Vector2[] spawnPoints =
+    [SerializeField]
+    Vector2[] spawnPoints =
     {
         new Vector2(0f, 0.83f),     // middle platform
         new Vector2(12f, 4f),       // right platform
@@ -129,6 +130,7 @@ public class GameSpawner : MonoBehaviour
         {
             m_localPlayer = player;
             m_localSpawn = position;
+            player.AddComponent<PlayerShooter>();
 
             PlayerController controller = player.GetComponent<PlayerController>();
             if (controller != null)

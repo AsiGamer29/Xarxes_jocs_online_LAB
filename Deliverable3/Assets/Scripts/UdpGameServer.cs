@@ -40,6 +40,7 @@ public class UdpGameServer : MonoBehaviour
         public float lastSeen;
         public int pingMs;
         public uint lastPress;
+        public uint lastShot;
     }
 
     Socket m_socket;
@@ -232,6 +233,27 @@ public class UdpGameServer : MonoBehaviour
                     SendButtonState(PButton.Mask);
                     break;
                 }
+
+            case MsgType.Shoot:
+                {
+                    uint shotSeq;
+                    bool facingRight;
+                    if (client == null || !Serializer.TryReadShoot(data, out shotSeq, out facingRight)) return;
+                    // the shot comes three times, the repeats are ignored
+                    if ((int)(shotSeq - client.lastShot) <= 0) return;
+                    client.lastShot = shotSeq;
+                    if (BulletSpawner.Instance != null) BulletSpawner.Instance.TryShoot(client.objectId, facingRight);
+                    break;
+                }
+
+            case MsgType.Trampoline:
+                {
+                    int index;
+                    if (client == null || !Serializer.TryReadTrampoline(data, out index)) return;
+                    Trampoline.PlayFromNetwork(index);
+                    SendToOthers(data, client);
+                    break;
+                }
         }
     }
 
@@ -303,6 +325,21 @@ public class UdpGameServer : MonoBehaviour
     {
         if (m_state != State.Running) return;
         SendToOthers(Serializer.WriteButtonState(++m_buttonSeq, mask), null);
+    }
+
+    // an event, not state: sent three times so one lost packet does not cancel the slow
+    public void SendSlow(int objectId, float seconds, float speedFactor)
+    {
+        if (m_state != State.Running) return;
+        byte[] packet = Serializer.WriteSlow(objectId, seconds, speedFactor);
+        for (int i = 0; i < 3; i++) SendToOthers(packet, null);
+    }
+
+    // the host bounced on a trampoline, the clients that did it send theirs to HandleMessage
+    public void SendTrampoline(int index)
+    {
+        if (m_state != State.Running) return;
+        SendToOthers(Serializer.WriteTrampoline(index), null);
     }
 
     // The host plays too: its own state goes to every client.

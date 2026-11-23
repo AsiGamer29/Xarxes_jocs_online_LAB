@@ -9,12 +9,14 @@ public class PlayerNetSync : MonoBehaviour
 {
     const float SendRate = 20f;   // packets per second
     const float Smooth = 15f;     // how fast a remote player catches up with the last position
+    const string ShootTrigger = "Shoot";
 
     string m_name;
     bool m_isLocal;
     float m_nextSend;
     uint m_sequence;
     bool m_placed;
+    bool m_hasShootTrigger;
 
     SpriteRenderer m_sr;
     Animator m_anim;
@@ -25,12 +27,27 @@ public class PlayerNetSync : MonoBehaviour
         m_sr = GetComponent<SpriteRenderer>();
         m_anim = GetComponent<Animator>();
         m_controller = GetComponent<PlayerController>();
+        m_hasShootTrigger = HasTrigger(ShootTrigger);
     }
 
     public void Init(string playerName, bool isLocal)
     {
         m_name = playerName;
         m_isLocal = isLocal;
+    }
+
+    // The local player plays it when it shoots, the others when the first copy of the bullet arrives.
+    public void PlayShoot()
+    {
+        if (m_hasShootTrigger) m_anim.SetTrigger(ShootTrigger);
+    }
+
+    bool HasTrigger(string triggerName)
+    {
+        if (m_anim == null) return false;
+        foreach (AnimatorControllerParameter parameter in m_anim.parameters)
+            if (parameter.name == triggerName && parameter.type == AnimatorControllerParameterType.Trigger) return true;
+        return false;
     }
 
     public bool IsLocal { get { return m_isLocal; } }

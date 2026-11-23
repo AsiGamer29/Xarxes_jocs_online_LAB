@@ -251,6 +251,66 @@ public static class Serializer
         catch (Exception) { return false; }
     }
 
+    // ------------------------------------------------------------------------------- shooting ---
+    public static byte[] WriteShoot(uint sequence, bool facingRight)
+    {
+        BinaryWriter w = Start(MsgType.Shoot);
+        w.Write(sequence);
+        w.Write(facingRight);
+        return Finish(w);
+    }
+
+    public static bool TryReadShoot(byte[] packet, out uint sequence, out bool facingRight)
+    {
+        sequence = 0; facingRight = true;
+        try
+        {
+            BinaryReader r = Reader(packet);
+            sequence = r.ReadUInt32();
+            facingRight = r.ReadBoolean();
+            return true;
+        }
+        catch (Exception) { return false; }
+    }
+
+    public static byte[] WriteSlow(int objectId, float seconds, float speedFactor)
+    {
+        BinaryWriter w = Start(MsgType.Slow);
+        w.Write(objectId);
+        w.Write(seconds);
+        w.Write(speedFactor);
+        return Finish(w);
+    }
+
+    public static bool TryReadSlow(byte[] packet, out int objectId, out float seconds, out float speedFactor)
+    {
+        objectId = 0; seconds = 0f; speedFactor = 1f;
+        try
+        {
+            BinaryReader r = Reader(packet);
+            objectId = r.ReadInt32();
+            seconds = r.ReadSingle();
+            speedFactor = r.ReadSingle();
+            return true;
+        }
+        catch (Exception) { return false; }
+    }
+
+    // ---------------------------------------------------------------------------- trampolines ---
+    public static byte[] WriteTrampoline(int index)
+    {
+        BinaryWriter w = Start(MsgType.Trampoline);
+        w.Write((byte)index);
+        return Finish(w);
+    }
+
+    public static bool TryReadTrampoline(byte[] packet, out int index)
+    {
+        index = 0;
+        try { index = Reader(packet).ReadByte(); return true; }
+        catch (Exception) { return false; }
+    }
+
     // ------------------------------------------------------------------------------- helpers ---
     static BinaryWriter Start(MsgType type)
     {

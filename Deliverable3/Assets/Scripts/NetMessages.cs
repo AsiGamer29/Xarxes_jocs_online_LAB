@@ -15,7 +15,9 @@ public enum MsgType : byte
     Replication = 9,  // host -> clients: world objects that were created, updated or destroyed
     ButtonPress = 10, // client -> host: i stepped on this button, repeated for a while
     ButtonState = 11, // host -> clients: which buttons are pressed, again and again
-
+    Shoot = 12,       // client -> host: i want to shoot, facing this way. Sent three times
+    Slow = 13,        // host -> clients: this player was hit by a bullet and goes slower for a while
+    Trampoline = 14,  // client -> host -> the others: somebody bounced on this trampoline, play its animation
 }
 
 // What a player is doing right now. We send the state (not the input): every PC moves its own

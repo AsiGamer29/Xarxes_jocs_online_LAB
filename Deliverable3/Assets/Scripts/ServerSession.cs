@@ -164,6 +164,12 @@ public static class ServerSession
     // The host runs the tag rules; clients only show what it sends.
     public static bool IsGameServer { get { return UdpServer != null; } }
 
+    // The game scene opened straight from the Editor: no lobby and no network. This PC rules alone.
+    public static bool IsOffline { get { return !UdpGame; } }
+
+    // Who decides what happens in the world: the host, or this PC when there is no network.
+    public static bool HasAuthority { get { return IsGameServer || IsOffline; } }
+
     // client: ask the host to press a button
     public static void SendButtonPress(int key)
     {
@@ -174,6 +180,25 @@ public static class ServerSession
     public static void SendButtonState(int mask)
     {
         if (UdpServer != null) UdpServer.SendButtonState(mask);
+    }
+
+    // client: ask the host for a bullet
+    public static void SendShoot(bool facingRight)
+    {
+        if (UdpClient != null) UdpClient.SendShoot(facingRight);
+    }
+
+    // host: tell everybody that this player goes slower for a while
+    public static void SendSlow(int objectId, float seconds, float speedFactor)
+    {
+        if (UdpServer != null) UdpServer.SendSlow(objectId, seconds, speedFactor);
+    }
+
+    // somebody bounced on a trampoline: the host tells everybody, a client tells the host
+    public static void SendTrampoline(int index)
+    {
+        if (UdpServer != null) UdpServer.SendTrampoline(index);
+        else if (UdpClient != null) UdpClient.SendTrampoline(index);
     }
 
     public static void SendGameState(GameStateDTO game)

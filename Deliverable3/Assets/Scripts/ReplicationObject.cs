@@ -2,7 +2,7 @@ using System.IO;
 using UnityEngine;
 
 // base class of every object the host replicates to the clients
-// it writes and reads its own fields, the manager does not know what a coin is
+// it writes and reads its own fields, the manager does not know what a bullet is
 public class ReplicatedObject : MonoBehaviour
 {
     public int id;      // network id, from the linking context

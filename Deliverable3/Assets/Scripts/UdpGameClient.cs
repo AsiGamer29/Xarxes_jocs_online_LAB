@@ -51,6 +51,7 @@ public class UdpGameClient : MonoBehaviour
 
     readonly List<(uint seq, int key, float until)> m_presses = new List<(uint, int, float)>();
     uint m_pressSeq;
+    uint m_shotSeq;
     float m_nextPress;
     uint m_lastButtonState;
     bool m_hasButtonState;
@@ -201,6 +202,24 @@ public class UdpGameClient : MonoBehaviour
                 m_lastButtonState = buttonSeq;
                 PButton.ApplyMask(mask);
                 break;
+
+            case MsgType.Slow:
+                {
+                    int slowedId;
+                    float slowSeconds, slowFactor;
+                    if (!Serializer.TryReadSlow(data, out slowedId, out slowSeconds, out slowFactor)) return;
+                    if (slowedId != Welcome.objectId) return;
+                    GameObject slowed = ServerSession.Linking.Find(slowedId);
+                    if (slowed != null) slowed.GetComponent<PlayerController>().ApplySlow(slowSeconds, slowFactor);
+                    break;
+                }
+
+            case MsgType.Trampoline:
+                {
+                    int trampolineIndex;
+                    if (Serializer.TryReadTrampoline(data, out trampolineIndex)) Trampoline.PlayFromNetwork(trampolineIndex);
+                    break;
+                }
         }
     }
 
@@ -243,6 +262,20 @@ public class UdpGameClient : MonoBehaviour
         m_presses.Add((seq, key, now + 0.5f));
         m_nextPress = now + 0.1f;
         SendPacket(Serializer.WriteButtonPress(seq, key));
+    }
+
+    // an event: sent three times so one lost packet does not lose the shot, the host ignores the repeats
+    public void SendShoot(bool facingRight)
+    {
+        if (m_state != State.Connected) return;
+        byte[] packet = Serializer.WriteShoot(++m_shotSeq, facingRight);
+        for (int i = 0; i < 3; i++) SendPacket(packet);
+    }
+
+    public void SendTrampoline(int index)
+    {
+        if (m_state != State.Connected) return;
+        SendPacket(Serializer.WriteTrampoline(index));
     }
 
     void ResendPresses(float now)
