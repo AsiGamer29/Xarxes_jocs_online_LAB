@@ -3,8 +3,8 @@ using UnityEngine;
 using UnityEngine.Tilemaps;
 
 // A floor button. Red and blue buttons switch each other: pressing one shows its platform, hides
-// its blocks and releases the buttons of the other colour. Only the local player can press a
-// button on each PC; the press then travels through TCP so every PC sees it.
+// its blocks and releases the buttons of the other colour. The host decides which buttons are
+// pressed and sends it over UDP. Clients only ask the host and then copy what it says.
 
 public class PButton : MonoBehaviour
 {
@@ -31,6 +31,21 @@ public class PButton : MonoBehaviour
 
     static readonly Dictionary<int, PButton> All = new Dictionary<int, PButton>();
 
+    // red and blue buttons share the same buttonId values, so the colour is part of the key
+    public int NetKey { get { return buttonId + (buttonColor == ButtonColor.Blue ? 8 : 0); } }
+
+    // one bit per button, the bit is its NetKey
+    public static int Mask
+    {
+        get
+        {
+            int mask = 0;
+            foreach (KeyValuePair<int, PButton> pair in All)
+                if (pair.Value.isPressed) mask |= 1 << pair.Key;
+            return mask;
+        }
+    }
+
     void Awake()
     {
         sr = GetComponent<SpriteRenderer>();
@@ -40,12 +55,13 @@ public class PButton : MonoBehaviour
         defaultColliderOffset = col.offset;
         if (platformTilemap != null) platformTilemap.gameObject.SetActive(false);
         if (unpressedTilemap != null) unpressedTilemap.gameObject.SetActive(true);
-        All[buttonId] = this;
+        All[NetKey] = this;
     }
 
     void OnDestroy()
     {
-        All.Remove(buttonId);
+        PButton registered;
+        if (All.TryGetValue(NetKey, out registered) && registered == this) All.Remove(NetKey);
     }
 
     void OnCollisionEnter2D(Collision2D collision)
@@ -61,52 +77,71 @@ public class PButton : MonoBehaviour
         float buttonTop = col.bounds.max.y;
         if (playerFeet < buttonTop - 0.15f) return;
 
-        Press();
-        ServerSession.SendButtonPress(buttonId);
+        // the host (or a game without network) presses it, a client asks the host
+        if (!ServerSession.UdpGame || ServerSession.IsGameServer)
+        {
+            Press();
+            ServerSession.SendButtonState(Mask);
+        }
+        else ServerSession.SendButtonPress(NetKey);
     }
 
-    public static void PressFromNetwork(int id)
+    // host: a client said it stepped on this button
+    public static void PressFromNetwork(int key)
     {
         PButton b;
-        if (All.TryGetValue(id, out b)) b.Press();
+        if (All.TryGetValue(key, out b)) b.Press();
+    }
+
+    // client: copy the state of the host
+    public static void ApplyMask(int mask)
+    {
+        foreach (KeyValuePair<int, PButton> pair in All)
+            pair.Value.SetPressed((mask & (1 << pair.Key)) != 0);
+        UpdateTilemaps();
     }
 
     public static void ResetAll()
     {
-        foreach (PButton b in All.Values) b.ResetButton();
-    }
-
-    void ResetButton()
-    {
-        isPressed = false;
-        sr.sprite = unpressedSprite;
-
-        col.size = defaultColliderSize;
-        col.offset = defaultColliderOffset;
-
-        if (platformTilemap != null) platformTilemap.gameObject.SetActive(false);
-        if (unpressedTilemap != null) unpressedTilemap.gameObject.SetActive(true);
-    }
-
-    void UnpressOtherColor()
-    {
-        foreach (PButton b in All.Values)
-            if (b.buttonColor != buttonColor) b.ResetButton();
+        foreach (PButton b in All.Values) b.SetPressed(false);
+        UpdateTilemaps();
     }
 
     void Press()
     {
         if (isPressed) return;
-        isPressed = true;
-        sr.sprite = pressedSprite;
 
-        col.size = pressedColliderSize;
-        col.offset = pressedColliderOffset;
+        foreach (PButton b in All.Values)
+            if (b.buttonColor != buttonColor) b.SetPressed(false);
 
-        if (unpressedTilemap != null) unpressedTilemap.gameObject.SetActive(false);
-        if (platformTilemap != null) platformTilemap.gameObject.SetActive(true);
+        SetPressed(true);
+        UpdateTilemaps();
+    }
 
-        UnpressOtherColor();
+    void SetPressed(bool pressed)
+    {
+        isPressed = pressed;
+        sr.sprite = pressed ? pressedSprite : unpressedSprite;
+        col.size = pressed ? pressedColliderSize : defaultColliderSize;
+        col.offset = pressed ? pressedColliderOffset : defaultColliderOffset;
+    }
 
+    // a colour shows its platform while any of its buttons is pressed
+    static void UpdateTilemaps()
+    {
+        bool redOn = false, blueOn = false;
+        foreach (PButton b in All.Values)
+        {
+            if (!b.isPressed) continue;
+            if (b.buttonColor == ButtonColor.Red) redOn = true;
+            else blueOn = true;
+        }
+
+        foreach (PButton b in All.Values)
+        {
+            bool on = b.buttonColor == ButtonColor.Red ? redOn : blueOn;
+            if (b.platformTilemap != null) b.platformTilemap.gameObject.SetActive(on);
+            if (b.unpressedTilemap != null) b.unpressedTilemap.gameObject.SetActive(!on);
+        }
     }
 }

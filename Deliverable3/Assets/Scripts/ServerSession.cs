@@ -164,10 +164,16 @@ public static class ServerSession
     // The host runs the tag rules; clients only show what it sends.
     public static bool IsGameServer { get { return UdpServer != null; } }
 
-    public static void SendButtonPress(int id)
+    // client: ask the host to press a button
+    public static void SendButtonPress(int key)
     {
-        if (Server != null) Server.SendHostButton(id);
-        else if (Client != null) Client.SendButton(id);
+        if (UdpClient != null) UdpClient.SendButtonPress(key);
+    }
+
+    // host: tell everybody which buttons are pressed
+    public static void SendButtonState(int mask)
+    {
+        if (UdpServer != null) UdpServer.SendButtonState(mask);
     }
 
     public static void SendGameState(GameStateDTO game)

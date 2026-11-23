@@ -72,7 +72,12 @@ public class TagGame : MonoBehaviour
         {
             m_shownRound = m_state.round;
             m_spawner.RespawnLocal();
-            PButton.ResetAll();
+            // only the host resets the buttons, the clients copy its state
+            if (ServerSession.IsGameServer)
+            {
+                PButton.ResetAll();
+                ServerSession.SendButtonState(PButton.Mask);
+            }
         }
 
         PaintTagged();
@@ -127,6 +132,7 @@ public class TagGame : MonoBehaviour
         {
             m_nextSend = now + SendInterval;
             ServerSession.SendGameState(m_state);
+            ServerSession.SendButtonState(PButton.Mask);   // every tick, so a lost packet is fixed by the next one
         }
     }
 

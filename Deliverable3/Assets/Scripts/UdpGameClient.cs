@@ -49,6 +49,12 @@ public class UdpGameClient : MonoBehaviour
     float m_lastHeard;
     bool m_loggedFailure;
 
+    readonly List<(uint seq, int key, float until)> m_presses = new List<(uint, int, float)>();
+    uint m_pressSeq;
+    float m_nextPress;
+    uint m_lastButtonState;
+    bool m_hasButtonState;
+
     public void StartNetwork()
     {
         if (m_running) return;
@@ -106,7 +112,7 @@ public class UdpGameClient : MonoBehaviour
 
         float now = Time.realtimeSinceStartup;
         if (m_state == State.Connecting) KeepJoining(now);
-        else if (m_state == State.Connected) KeepAlive(now);
+        else if (m_state == State.Connected) { KeepAlive(now); ResendPresses(now); }
 
         if (m_state == State.Failed && !m_loggedFailure)
         {
@@ -184,6 +190,17 @@ public class UdpGameClient : MonoBehaviour
                 if (WorldReplicationClient.Instance != null)
                     WorldReplicationClient.Instance.ReadPacket(new BinaryReader(new MemoryStream(data, 1, data.Length - 1)));
                 break;
+
+            case MsgType.ButtonState:
+                uint buttonSeq;
+                int mask;
+                if (!Serializer.TryReadButtonState(data, out buttonSeq, out mask)) return;
+                // an old packet can arrive after a newer one
+                if (m_hasButtonState && (int)(buttonSeq - m_lastButtonState) <= 0) return;
+                m_hasButtonState = true;
+                m_lastButtonState = buttonSeq;
+                PButton.ApplyMask(mask);
+                break;
         }
     }
 
@@ -214,6 +231,28 @@ public class UdpGameClient : MonoBehaviour
             byte[] data = new byte[read];
             Buffer.BlockCopy(buffer, 0, data, 0, read);
             m_inbox.Enqueue(data);
+        }
+    }
+
+    // the press is repeated for a while because udp can lose it, the host ignores the repeats
+    public void SendButtonPress(int key)
+    {
+        if (m_state != State.Connected) return;
+        float now = Time.realtimeSinceStartup;
+        uint seq = ++m_pressSeq;
+        m_presses.Add((seq, key, now + 0.5f));
+        m_nextPress = now + 0.1f;
+        SendPacket(Serializer.WriteButtonPress(seq, key));
+    }
+
+    void ResendPresses(float now)
+    {
+        if (m_presses.Count == 0 || now < m_nextPress) return;
+        m_nextPress = now + 0.1f;
+        for (int i = m_presses.Count - 1; i >= 0; i--)
+        {
+            if (now > m_presses[i].until) m_presses.RemoveAt(i);
+            else SendPacket(Serializer.WriteButtonPress(m_presses[i].seq, m_presses[i].key));
         }
     }
 

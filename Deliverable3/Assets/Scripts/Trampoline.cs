@@ -22,6 +22,14 @@ public class Trampoline : MonoBehaviour
     {
         if (!collision.gameObject.CompareTag("Player")) return;
 
+        // remote players are kinematic and follow the network, a velocity on them would make them fly
+        PlayerNetSync sync = collision.gameObject.GetComponent<PlayerNetSync>();
+        if (sync != null && !sync.IsLocal)
+        {
+            Bounce();
+            return;
+        }
+
         Rigidbody2D playerRb = collision.rigidbody;
         if (playerRb == null) return;
 

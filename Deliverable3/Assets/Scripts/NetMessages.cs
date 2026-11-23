@@ -13,6 +13,9 @@ public enum MsgType : byte
     Pong = 7,         // host -> client: the Ping's time sent back, to measure the round trip
     PlayerLeft = 8,   // host -> clients: this network ID timed out, take it off the screen
     Replication = 9,  // host -> clients: world objects that were created, updated or destroyed
+    ButtonPress = 10, // client -> host: i stepped on this button, repeated for a while
+    ButtonState = 11, // host -> clients: which buttons are pressed, again and again
+
 }
 
 // What a player is doing right now. We send the state (not the input): every PC moves its own

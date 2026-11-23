@@ -26,6 +26,8 @@ public class UdpGameServer : MonoBehaviour
     const float Timeout = 5f;
     const int SioUdpConnReset = -1744830452;
 
+    uint m_buttonSeq;
+
     struct Packet { public byte[] data; public IPEndPoint from; }
 
     // One per client (Lab 6 slide 9). The address comes from ReceiveFrom, never from inside a message.
@@ -37,6 +39,7 @@ public class UdpGameServer : MonoBehaviour
         public int objectId;
         public float lastSeen;
         public int pingMs;
+        public uint lastPress;
     }
 
     Socket m_socket;
@@ -216,6 +219,19 @@ public class UdpGameServer : MonoBehaviour
                     SendPacket(Serializer.WritePong(time), from);
                     break;
                 }
+
+            case MsgType.ButtonPress:
+                {
+                    uint pressSeq;
+                    int key;
+                    if (client == null || !Serializer.TryReadButtonPress(data, out pressSeq, out key)) return;
+                    // a repeat of a press we already did
+                    if ((int)(pressSeq - client.lastPress) <= 0) return;
+                    client.lastPress = pressSeq;
+                    PButton.PressFromNetwork(key);
+                    SendButtonState(PButton.Mask);
+                    break;
+                }
         }
     }
 
@@ -281,6 +297,12 @@ public class UdpGameServer : MonoBehaviour
             objectIds = ids.ToArray(),
             names = names.ToArray(),
         };
+    }
+
+    public void SendButtonState(int mask)
+    {
+        if (m_state != State.Running) return;
+        SendToOthers(Serializer.WriteButtonState(++m_buttonSeq, mask), null);
     }
 
     // The host plays too: its own state goes to every client.

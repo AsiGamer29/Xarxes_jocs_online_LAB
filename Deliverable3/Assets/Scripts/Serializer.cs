@@ -208,6 +208,49 @@ public static class Serializer
         catch (Exception) { return false; }
     }
 
+    // ------------------------------------------------------------------------------- buttons ---
+    public static byte[] WriteButtonPress(uint sequence, int key)
+    {
+        BinaryWriter w = Start(MsgType.ButtonPress);
+        w.Write(sequence);
+        w.Write((byte)key);
+        return Finish(w);
+    }
+
+    public static bool TryReadButtonPress(byte[] packet, out uint sequence, out int key)
+    {
+        sequence = 0; key = 0;
+        try
+        {
+            BinaryReader r = Reader(packet);
+            sequence = r.ReadUInt32();
+            key = r.ReadByte();
+            return true;
+        }
+        catch (Exception) { return false; }
+    }
+
+    public static byte[] WriteButtonState(uint sequence, int mask)
+    {
+        BinaryWriter w = Start(MsgType.ButtonState);
+        w.Write(sequence);
+        w.Write(mask);
+        return Finish(w);
+    }
+
+    public static bool TryReadButtonState(byte[] packet, out uint sequence, out int mask)
+    {
+        sequence = 0; mask = 0;
+        try
+        {
+            BinaryReader r = Reader(packet);
+            sequence = r.ReadUInt32();
+            mask = r.ReadInt32();
+            return true;
+        }
+        catch (Exception) { return false; }
+    }
+
     // ------------------------------------------------------------------------------- helpers ---
     static BinaryWriter Start(MsgType type)
     {
