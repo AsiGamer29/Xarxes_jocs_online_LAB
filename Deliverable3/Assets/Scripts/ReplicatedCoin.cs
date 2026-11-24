@@ -8,6 +8,9 @@ public class ReplicatedCoin : ReplicatedObject
     public int value = 1;
     public byte kind;   // 0 = normal coin, 1 = golden coin
 
+    public Sprite goldTexture;
+    public Sprite baseTexture;
+
     SpriteRenderer m_sr;
 
     void Awake()
@@ -34,7 +37,11 @@ public class ReplicatedCoin : ReplicatedObject
     public void Paint()
     {
         if (m_sr == null) return;
-        m_sr.color = kind == 1 ? new Color(1f, 0.85f, 0.2f) : Color.white;
+
+        if (kind == 1)
+            m_sr.sprite = goldTexture;
+        else
+            m_sr.sprite = baseTexture;
     }
 
     void OnTriggerEnter2D(Collider2D other)
