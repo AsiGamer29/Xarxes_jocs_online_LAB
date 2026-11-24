@@ -10,7 +10,7 @@ using UnityEngine;
 public class ReplicatedBullet : ReplicatedObject
 {
     const float CorrectionSpeed = 15f;   // how fast a copy closes the gap to the last position of the host
-    const float SnapDistance = 2f;       // a bigger gap than this is not smoothed, the copy jumps
+    const float SnapDistance = 2f;       // a bigger gap than this is not smoothed, the copy jumps (also the wrap)
 
     [SerializeField] float lifeTime = 2f;   // seconds until it disappears if it hits nothing
 
@@ -28,6 +28,10 @@ public class ReplicatedBullet : ReplicatedObject
     bool m_placed;
     bool m_shotShown;
 
+    //bounds
+    Transform m_leftBound;
+    Transform m_rightBound;
+
     void Awake()
     {
         m_sprite = GetComponentInChildren<SpriteRenderer>();
@@ -35,6 +39,13 @@ public class ReplicatedBullet : ReplicatedObject
         m_collider.isTrigger = true;    // a solid bullet could be stood on
         m_filter.useTriggers = false;   // walls and players, not the trigger zones
         m_deadline = Time.time + lifeTime;
+
+        GameSpawner spawner = FindAnyObjectByType<GameSpawner>();
+        if (spawner != null)
+        {
+            m_leftBound = spawner.LeftBound;
+            m_rightBound = spawner.RightBound;
+        }
     }
 
     public void SetVelocity(Vector2 value)
@@ -101,6 +112,7 @@ public class ReplicatedBullet : ReplicatedObject
             Vector2 fix = m_correction * (1f - Mathf.Exp(-CorrectionSpeed * Time.deltaTime));
             m_correction -= fix;
             transform.position += (Vector3)(step + fix);
+            WrapAround();
             return;
         }
 
@@ -112,7 +124,22 @@ public class ReplicatedBullet : ReplicatedObject
         if (m_finished) return;
 
         transform.position += (Vector3)step;
+        WrapAround();
         if (Time.time >= m_deadline) Remove();
+    }
+
+    //wrap like playercontroller
+    void WrapAround()
+    {
+        if (m_leftBound == null || m_rightBound == null) return;
+
+        Vector3 pos = transform.position;
+
+        if (pos.x > m_rightBound.position.x) pos.x = m_leftBound.position.x;
+        else if (pos.x < m_leftBound.position.x) pos.x = m_rightBound.position.x;
+        else return;
+
+        transform.position = pos;
     }
 
     // moves the collider along the path of this frame: the first wall stops the bullet, and so does the first player it can hit

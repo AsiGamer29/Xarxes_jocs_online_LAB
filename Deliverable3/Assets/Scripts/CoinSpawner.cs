@@ -75,9 +75,13 @@ public class CoinSpawner : MonoBehaviour
 
             m_slots[i].coin = null;
             m_slots[i].respawnAt = Time.time + respawnTime;
-            player.AddCoins(coin.value);
+
+            //not counted in waiting time
+            bool inRound = TagGame.Instance == null || TagGame.Instance.State.phase == GamePhase.Playing;
+            if (inRound) player.AddCoins(coin.value);
+
             WorldReplicationHost.Instance.Despawn(coin);
-            Debug.Log("[COINS] " + player.PlayerName + " took a coin worth " + coin.value);
+            Debug.Log("[COINS] " + player.PlayerName + " took a coin worth " + coin.value + (inRound ? "" : " (out of round, not counted)"));
             return;
         }
     }

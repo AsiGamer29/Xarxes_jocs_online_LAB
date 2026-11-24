@@ -33,6 +33,9 @@ public class GameSpawner : MonoBehaviour
     [SerializeField] Transform leftBound;
     [SerializeField] Transform rightBound;
 
+    public Transform LeftBound { get { return leftBound; } }
+    public Transform RightBound { get { return rightBound; } }
+
     void Start()
     {
         List<string> players = ServerSession.CurrentPlayers;
