@@ -85,6 +85,13 @@ public class PlayerNetSync : ReplicatedObject
         RefreshNameTag();
     }
 
+    // Host: new match, reset to 0 coins.
+    public void ResetCoins()
+    {
+        m_coins = 0;
+        RefreshNameTag();
+    }
+
     // ------------------------------------------------------------------ replication packet ---
     // 1. position, 2. what it is doing (one byte of flags), 3. how long it stays slow and how slow,
     // 4. coins. Read must read exactly this, in this order.

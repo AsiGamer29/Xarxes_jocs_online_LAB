@@ -94,7 +94,7 @@ public class TagGame : MonoBehaviour
                 m_wins.Clear();
                 m_state.scores = "";
                 m_state.winners = "";
-                if (players.Count >= 2) StartRound(players, now);
+                if (players.Count >= 2) { ResetCoins(players); StartRound(players, now); }
                 break;
 
             case GamePhase.Playing:
@@ -121,7 +121,7 @@ public class TagGame : MonoBehaviour
                 {
                     m_restartRequested = false;
                     m_wins.Clear();
-                    if (players.Count >= 2) StartRound(players, now);
+                    if (players.Count >= 2) { ResetCoins(players); StartRound(players, now); }
                     else m_state.phase = GamePhase.Waiting;
                 }
                 break;
@@ -177,13 +177,51 @@ public class TagGame : MonoBehaviour
 
     string MatchWinners(List<string> players)
     {
-        List<string> result = new List<string>();
+        //most wins
+        List<string> candidates = new List<string>();
+        int bestWins = 0;
         foreach (string p in players)
         {
             int w;
-            if (m_wins.TryGetValue(p, out w) && w >= RoundsToWin) result.Add(p);
+            if (!m_wins.TryGetValue(p, out w) || w < RoundsToWin) continue;
+            if (w > bestWins) { bestWins = w; candidates.Clear(); }
+            if (w == bestWins) candidates.Add(p);
         }
-        return string.Join(",", result.ToArray());
+
+        //in case of a tie the coins are counted
+        if (candidates.Count > 1)
+        {
+            int bestCoins = -1;
+            List<string> result = new List<string>();
+            foreach (string p in candidates)
+            {
+                int c = CoinsOf(p);
+                if (c > bestCoins) { bestCoins = c; result.Clear(); }
+                if (c == bestCoins) result.Add(p);
+            }
+            candidates = result;
+        }
+
+        return string.Join(",", candidates.ToArray());
+    }
+
+    int CoinsOf(string playerName)
+    {
+        GameObject go;
+        if (!m_spawner.Players.TryGetValue(playerName, out go)) return 0;
+        PlayerNetSync sync = go.GetComponent<PlayerNetSync>();
+        return sync != null ? sync.Coins : 0;
+    }
+
+    void ResetCoins(List<string> players)
+    {
+        foreach (string p in players)
+        {
+            GameObject go;
+            if (!m_spawner.Players.TryGetValue(p, out go)) continue;
+            PlayerNetSync sync = go.GetComponent<PlayerNetSync>();
+            if (sync != null) sync.ResetCoins();
+        }
     }
 
     string BuildScores(List<string> players)
